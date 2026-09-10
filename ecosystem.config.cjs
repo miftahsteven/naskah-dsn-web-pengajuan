@@ -9,7 +9,10 @@ module.exports = {
         PM2_SERVE_SPA: 'true',
         PM2_SERVE_HOMEPAGE: '/index.html',
       },
-      instances: 1,
+      // Mode cluster: 'max' akan mendistribusikan traffic ke seluruh core CPU server secara seimbang
+      // Atau tentukan angka tetap (misal: 2)
+      instances: process.env.PM2_INSTANCES || 'max',
+      exec_mode: 'cluster',
       autorestart: true,
       max_memory_restart: '300M',
     },
