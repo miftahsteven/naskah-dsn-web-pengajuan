@@ -1,7 +1,25 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4002/api/public';
-export const SERVER_BASE_URL = API_BASE_URL.replace('/api/public', '');
+// Normalize API and Server Base URLs from environment
+const rawApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4002/api/public').trim().replace(/\/+$/, '');
+
+export const API_BASE_URL = rawApiUrl.endsWith('/api/public')
+  ? rawApiUrl
+  : rawApiUrl.endsWith('/api')
+  ? `${rawApiUrl}/public`
+  : `${rawApiUrl}/api/public`;
+
+export const SERVER_BASE_URL = (
+  import.meta.env.VITE_SERVER_URL ||
+  API_BASE_URL.replace(/\/api\/public\/?$/, '')
+).trim().replace(/\/+$/, '');
+
+export const getFileUrl = (filePath?: string | null): string => {
+  if (!filePath) return '';
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath;
+  const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  return `${SERVER_BASE_URL}${cleanPath}`;
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,

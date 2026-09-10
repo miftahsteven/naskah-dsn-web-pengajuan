@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { DocumentViewerModal } from '../components/ui/DocumentViewerModal';
-import api, { formatDate, formatDateTime, formatFileSize, getStatusMeta } from '../lib/api';
+import api, { formatDate, formatDateTime, formatFileSize, getStatusMeta, getFileUrl } from '../lib/api';
 import type { PublicSubmission } from '../types';
 import {
   FileText,
@@ -603,7 +603,7 @@ export const SubmissionDetailPage: React.FC = () => {
                 Lihat Berkas
               </Button>
               <a
-                href={`${(api.defaults.baseURL || '').replace('/api', '')}/${submission.officialLetterUrl.replace(/^\//, '')}`}
+                href={getFileUrl(submission.officialLetterUrl)}
                 download
                 target="_blank"
                 rel="noopener noreferrer"
@@ -667,7 +667,7 @@ export const SubmissionDetailPage: React.FC = () => {
                 Lihat Berkas
               </Button>
               <a
-                href={`${(api.defaults.baseURL || '').replace('/api', '')}/${additionalSubmissionDoc.fileUrl.replace(/^\//, '')}`}
+                href={getFileUrl(additionalSubmissionDoc.fileUrl)}
                 download
                 target="_blank"
                 rel="noopener noreferrer"
@@ -772,7 +772,7 @@ export const SubmissionDetailPage: React.FC = () => {
                                 Lihat
                               </Button>
                               <a
-                                href={`${(api.defaults.baseURL || '').replace('/api', '')}/${docItem.fileUrl.replace(/^\//, '')}`}
+                                href={getFileUrl(docItem.fileUrl)}
                                 download={docItem.fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
