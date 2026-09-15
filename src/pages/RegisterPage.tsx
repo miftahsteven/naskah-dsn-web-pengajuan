@@ -22,6 +22,7 @@ import {
   Loader2,
   Info,
 } from 'lucide-react';
+import { FloatingWhatsApp } from '../components/layout/FloatingWhatsApp';
 
 interface RegionItem {
   id: string;
@@ -1279,6 +1280,7 @@ export const RegisterPage: React.FC = () => {
           </div>
         </div>
       )}
+      <FloatingWhatsApp />
     </div>
   );
 };

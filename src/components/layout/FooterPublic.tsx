@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Mail, Phone, MapPin, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Mail, Phone, Smartphone, MapPin, ExternalLink } from 'lucide-react';
+import { FloatingWhatsApp } from './FloatingWhatsApp';
 
 export const FooterPublic: React.FC = () => {
   return (
@@ -31,20 +32,48 @@ export const FooterPublic: React.FC = () => {
               Satu pintu digital pelayanan permohonan sertifikasi dan opini kesesuaian syariah antara lembaga keuangan, industri, dan bisnis dengan Dewan Syariah Nasional – Majelis Ulama Indonesia.
             </p>
 
-            <div className="space-y-2 pt-2 text-xs text-emerald-300/80">
-              <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                <span>
-                  Gedung Majelis Ulama Indonesia, Lt. 3, Jl. Proklamasi No. 51, Menteng, Jakarta Pusat 10320
+            <div className="space-y-2.5 pt-2 text-xs text-emerald-200/85">
+              <a
+                href="https://maps.google.com/?q=Jl.+Dempo+No.+19,+Pegangsaan,+Menteng,+Jakarta+Pusat+10320"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-2.5 hover:text-white transition-colors"
+              >
+                <MapPin className="w-4 h-4 text-accent flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="leading-relaxed">
+                  Jl. Dempo No. 19, Pegangsaan, Menteng, Jakarta Pusat 10320
                 </span>
-              </div>
+              </a>
+
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-accent flex-shrink-0" />
-                <span>(021) 3192 7623 / 391 7332</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-emerald-400 font-medium">Telp:</span>
+                  <a
+                    href="tel:0213904146"
+                    className="hover:text-accent transition-colors underline-offset-2 hover:underline"
+                  >
+                    (021) 3904146
+                  </a>
+                </div>
               </div>
+
               <div className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-accent flex-shrink-0" />
-                <span>sekretariat@dsnmui.or.id</span>
+                <Smartphone className="w-4 h-4 text-accent flex-shrink-0" />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-emerald-400 font-medium">Hotline:</span>
+                  <a
+                    href="https://wa.me/6282260004146"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-accent transition-colors font-medium text-white underline-offset-2 hover:underline flex items-center gap-1.5"
+                  >
+                    0822 6000 4146
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-800/70 text-emerald-200 font-normal">
+                      WA / Call
+                    </span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -172,6 +201,7 @@ export const FooterPublic: React.FC = () => {
           </div>
         </div>
       </div>
+      <FloatingWhatsApp />
     </footer>
   );
 };

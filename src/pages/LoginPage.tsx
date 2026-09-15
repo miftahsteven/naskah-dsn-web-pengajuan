@@ -18,6 +18,7 @@ import {
   Info,
 } from 'lucide-react';
 import { DSN_SERVICES } from '../data/dsnServices';
+import { FloatingWhatsApp } from '../components/layout/FloatingWhatsApp';
 
 export const LoginPage: React.FC = () => {
   const { requestOtp, verifyOtp, isAuthenticated } = useAuth();
@@ -483,6 +484,7 @@ export const LoginPage: React.FC = () => {
           )}
         </div>
       </div>
+      <FloatingWhatsApp />
     </div>
   );
 };
