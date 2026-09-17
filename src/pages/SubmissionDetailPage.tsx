@@ -31,13 +31,20 @@ import {
   Printer,
   Video,
   Mail,
+  HeartPulse,
+  CreditCard,
+  Award,
+  Info,
+  FileCheck2,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { OfficialInterviewInvitationModal } from '../components/submissions/OfficialInterviewInvitationModal';
 import { EditSubmissionDocumentsModal } from '../components/submissions/EditSubmissionDocumentsModal';
 
 export const SubmissionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, company } = useAuth();
 
   const [submission, setSubmission] = useState<PublicSubmission | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -120,11 +127,24 @@ export const SubmissionDetailPage: React.FC = () => {
     }
   }
 
-  const isDps =
-    submission.submissionTypeName?.toLowerCase().includes('dps') ||
-    submission.submissionTypeName?.toLowerCase().includes('pengawas syariah') ||
-    Boolean(submission.dpsStage) ||
-    candidatesList.length > 0;
+  const isRsSubmission =
+    submission.productOrServiceName?.toLowerCase().includes('rumah sakit') ||
+    submission.title?.toLowerCase().includes('rumah sakit') ||
+    submission.submissionTypeName?.toLowerCase().includes('rumah sakit') ||
+    submission.documents?.some(
+      (d) =>
+        d.requirementName?.toLowerCase().includes('mukisi') ||
+        d.requirementName?.toLowerCase().includes('akreditasi rumah sakit')
+    );
+
+  const isPureDps =
+    !isRsSubmission &&
+    (submission.submissionTypeName?.toLowerCase().includes('dps') ||
+      submission.submissionTypeName?.toLowerCase().includes('pengawas syariah') ||
+      Boolean(submission.dpsStage) ||
+      candidatesList.length > 0);
+
+  const isDps = isPureDps;
 
   const CANDIDATE_DOC_SPECS = [
     { key: 'suratMui', title: 'Surat Pengantar dari MUI Setempat' },
@@ -134,6 +154,15 @@ export const SubmissionDetailPage: React.FC = () => {
     { key: 'suratPernyataanNonPegawai', title: 'Surat Keterangan Tidak Menjadi Pengurus/Pegawai Aktif LKS/LBS/LPS' },
     { key: 'dokumenLain', title: 'Dokumen Lain Calon (Pendukung Tambahan)' },
   ];
+
+  const RS_CANDIDATE_DOC_SPECS = [
+    { key: 'suratMui', title: 'Surat Pengantar dari MUI Setempat' },
+    { key: 'sertifikatPelatihan', title: 'Sertifikat Pelatihan Dasar Pengawas Syariah dari DSN-MUI' },
+    { key: 'sertifikatKompetensi', title: 'Sertifikat Kompetensi Pengawas Syariah dari LSP MUI' },
+    { key: 'profilCv', title: 'Profil Calon DPS (Daftar Riwayat Hidup dan KTP terbaru)' },
+  ];
+
+  const candidateSpecsToUse = isRsSubmission ? RS_CANDIDATE_DOC_SPECS : CANDIDATE_DOC_SPECS;
 
   const getNormalizedCandidateDocs = (rawDocs: any) => {
     if (!rawDocs) return [];
@@ -148,7 +177,7 @@ export const SubmissionDetailPage: React.FC = () => {
       }));
     }
     if (typeof rawDocs === 'object') {
-      return CANDIDATE_DOC_SPECS.map((spec) => {
+      return candidateSpecsToUse.map((spec) => {
         const doc = rawDocs[spec.key];
         return {
           key: spec.key,
@@ -182,6 +211,52 @@ export const SubmissionDetailPage: React.FC = () => {
     { key: 'LULUS', step: 5, label: 'Lulus / Rekomendasi', desc: 'Penerbitan surat rekomendasi resmi' },
   ];
 
+  const rsStages = [
+    { key: 'PROSES_PENGAJUAN', step: 1, label: 'Proses Pengajuan', desc: 'Permohonan RS tercatat di Surat Masuk DSN-MUI' },
+    { key: 'VALIDASI_DOKUMEN', step: 2, label: 'Validasi Dokumen', desc: 'Pemeriksaan 7 legalitas RS, permohonan, calon DPS & berkas RS' },
+    { key: 'WAWANCARA', step: 3, label: 'Asesmen & Wawancara', desc: 'Uji kompetensi DPS & asesmen syariah bersama MUKISI' },
+    { key: 'PROSES_INTERNAL', step: 4, label: 'Proses Internal', desc: 'Sidang pleno komisi & penelaahan BPH DSN-MUI' },
+    { key: 'LULUS', step: 5, label: 'Sertifikat Terbit', desc: 'Penerbitan Sertifikat Kesesuaian Syariah RS' },
+  ];
+
+  // RS Document Categorization
+  const allSubmissionDocs = submission.documents || [];
+
+  const legalDocsList = allSubmissionDocs.filter((d) => {
+    const n = d.requirementName.toLowerCase();
+    return (
+      n.includes('akta pendirian') ||
+      n.includes('izin pendirian') ||
+      n.includes('izin operasional') ||
+      n.includes('tanda daftar') ||
+      n.includes('nib') ||
+      n.includes('domisili') ||
+      n.includes('sk rups') ||
+      n.includes('notulensi') ||
+      n.includes('profil') ||
+      n.includes('laporan keuangan')
+    );
+  });
+
+  const appDocsList = allSubmissionDocs.filter((d) => {
+    const n = d.requirementName.toLowerCase();
+    return (
+      n.includes('surat permohonan sertifikasi') ||
+      n.includes('komitmen direksi') ||
+      n.includes('bukti transfer') ||
+      n.includes('rekening')
+    );
+  });
+
+  const hospitalDocsList = allSubmissionDocs.filter((d) => {
+    const n = d.requirementName.toLowerCase();
+    return (
+      n.includes('mukisi') ||
+      n.includes('halal') ||
+      n.includes('akreditasi')
+    );
+  });
+
   const currentDpsStage = submission.dpsStage || 'PROSES_PENGAJUAN';
   const getDpsStageIndex = (stage: string) => {
     switch (stage) {
@@ -195,6 +270,10 @@ export const SubmissionDetailPage: React.FC = () => {
     }
   };
   const activeDpsStageIdx = getDpsStageIndex(currentDpsStage);
+
+  const findDoc = (pattern: string) => {
+    return allSubmissionDocs.find((d) => d.requirementName.toLowerCase().includes(pattern.toLowerCase()));
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-16">
@@ -214,6 +293,12 @@ export const SubmissionDetailPage: React.FC = () => {
                 {submission.submissionNumber}
               </span>
               <Badge status={submission.status} size="md" />
+              {isRsSubmission && (
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center gap-1.5">
+                  <HeartPulse className="w-3.5 h-3.5 text-emerald-600" />
+                  Kesesuaian Syariah Rumah Sakit
+                </span>
+              )}
               {isDps && (
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                   Layanan Prioritas DPS
@@ -247,6 +332,163 @@ export const SubmissionDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── RS INSTITUTIONAL IDENTITY & NPWP CARD ── */}
+      {isRsSubmission && (
+        <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-600" />
+                Identitas Institusi Rumah Sakit & Legalitas Pemohon
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Data resmi rumah sakit dan narahubung penanggung jawab pengajuan
+              </p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              Terverifikasi
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+            {/* Nama Rumah Sakit */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1">
+              <span className="text-muted-foreground text-[11px]">Nama Rumah Sakit:</span>
+              <p className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
+                <HeartPulse className="w-4 h-4 text-emerald-600 shrink-0" />
+                {submission.title.replace('Permohonan Kesesuaian Syariah - ', '') || company?.name || 'Rumah Sakit Pemohon'}
+              </p>
+            </div>
+
+            {/* NPWP Instansi (Dari Registrasi) */}
+            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold">
+                  NPWP Instansi:
+                </span>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
+                  Dari Profil
+                </span>
+              </div>
+              <p className="font-mono font-extrabold text-emerald-900 dark:text-emerald-100 text-sm tracking-wide">
+                {submission.company?.npwp || company?.npwp || 'NPWP Terverifikasi'}
+              </p>
+            </div>
+
+            {/* Nomor & Tanggal Surat */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1">
+              <span className="text-muted-foreground text-[11px]">Nomor & Tanggal Surat Permohonan:</span>
+              <p className="font-mono font-bold text-foreground truncate">
+                {submission.companyLetterNumber || '-'}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Tertanggal: {formatDate(submission.companyLetterDate || submission.createdAt)}
+              </p>
+            </div>
+
+            {/* Direktur Utama / Penanggung Jawab */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1">
+              <span className="text-muted-foreground text-[11px]">Direktur Utama Rumah Sakit:</span>
+              <p className="font-bold text-foreground">
+                {submission.description?.split('Direktur Utama: ')[1]?.split('.')[0] || 'Direksi Rumah Sakit'}
+              </p>
+            </div>
+
+            {/* PIC Pengajuan */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border space-y-1 sm:col-span-2">
+              <span className="text-muted-foreground text-[11px]">PIC Penanggung Jawab Pengajuan:</span>
+              <p className="font-semibold text-foreground flex flex-wrap items-center gap-2">
+                <User className="w-3.5 h-3.5 text-primary" />
+                <span>{submission.user?.fullName || user?.fullName || 'PIC'}</span>
+                <span className="text-muted-foreground">•</span>
+                <span>{submission.user?.email || user?.email || '-'}</span>
+                {(submission.user?.phone || user?.phone) && (
+                  <>
+                    <span className="text-muted-foreground">•</span>
+                    <span>{submission.user?.phone || user?.phone}</span>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── RS 5-STAGE ROADMAP ── */}
+      {isRsSubmission && (
+        <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                Alur Tahapan Kesesuaian Syariah Rumah Sakit
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Tahapan audit, asesmen kesesuaian syariah & penetapan sertifikat DSN-MUI
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Tahap Saat Ini:</span>
+              <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                currentDpsStage === 'LULUS'
+                  ? 'bg-emerald-500 text-white'
+                  : currentDpsStage === 'TIDAK_LULUS'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-primary text-white'
+              }`}>
+                {rsStages.find((s) => s.key === currentDpsStage)?.label || 'Proses Pengajuan'}
+              </span>
+            </div>
+          </div>
+
+          {/* Stepper Progress Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 relative">
+            {rsStages.map((stage, idx) => {
+              const isPast = idx < activeDpsStageIdx;
+              const isCurrent = idx === activeDpsStageIdx;
+              return (
+                <div
+                  key={stage.key}
+                  className={`p-4 rounded-2xl border transition-all relative flex flex-col justify-between gap-3 ${
+                    isCurrent
+                      ? 'bg-primary/5 dark:bg-primary/10 border-primary shadow-md ring-2 ring-primary/20'
+                      : isPast
+                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-300'
+                      : 'bg-muted/30 border-border opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                        isCurrent
+                          ? 'bg-primary text-white shadow-glow-green'
+                          : isPast
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}
+                    >
+                      {isPast ? <Check className="w-4 h-4" /> : stage.step}
+                    </div>
+                    <span className="text-[10px] font-mono uppercase font-bold text-muted-foreground">
+                      Langkah {stage.step}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground leading-tight">
+                      {stage.label}
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+                      {stage.desc}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── DPS 5-STAGE ROADMAP (If Rekomendasi DPS) ── */}
       {isDps && (
@@ -557,8 +799,337 @@ export const SubmissionDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── COMPANY OFFICIAL LETTER (Syarat #1) ── */}
-      <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-4">
+      {/* ── RS STRUCTURED DOCUMENTS (4 GROUPS) ── */}
+      {isRsSubmission && (
+        <div className="space-y-6">
+          {/* 1. DOKUMEN LEGALITAS RUMAH SAKIT (7 BERKAS) */}
+          <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  1. Dokumen Hukum Legalitas Rumah Sakit (7 Berkas Wajib)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Berkas keabsahan hukum, izin pendirian, operasional, domisili, dan profil RS
+                </p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 w-fit">
+                {legalDocsList.length} dari 7 Berkas Terlampir
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {[
+                { title: '1. Akta Pendirian Perusahaan & Pengesahan Kemenkumham', doc: findDoc('akta pendirian') },
+                { title: '2. Surat Izin Pendirian Rumah Sakit', doc: findDoc('izin pendirian') },
+                { title: '3. Surat Izin Operasional Rumah Sakit', doc: findDoc('izin operasional') },
+                { title: '4. TDP / NIB Berbasis Risiko', doc: findDoc('tanda daftar') || findDoc('nib') },
+                { title: '5. Surat Keterangan Domisili Perusahaan / RS', doc: findDoc('domisili') },
+                { title: '6. SK RUPS / Notulensi Rapat Keputusan Syariah', doc: findDoc('sk rups') || findDoc('notulensi') },
+                { title: '7. Profil Perusahaan/RS & Laporan Keuangan (1 File PDF)', doc: findDoc('profil') || findDoc('laporan keuangan') },
+              ].map((item, idx) => (
+                <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border flex items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="text-xs font-bold text-foreground truncate" title={item.title}>
+                      {item.title}
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground truncate">
+                      {item.doc ? `${item.doc.fileName} (${formatFileSize(item.doc.fileSize)})` : 'Belum diunggah'}
+                    </div>
+                  </div>
+                  {item.doc ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setPreviewDoc({
+                            isOpen: true,
+                            title: item.title,
+                            fileUrl: item.doc!.fileUrl,
+                            fileSize: item.doc!.fileSize,
+                          })
+                        }
+                        leftIcon={<Eye className="w-3.5 h-3.5" />}
+                        className="text-xs py-1"
+                      >
+                        Lihat
+                      </Button>
+                      <a href={getFileUrl(item.doc.fileUrl)} download={item.doc.fileName} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="sm" className="p-1.5 h-auto">
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded">
+                      Belum Ada
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. DOKUMEN PERMOHONAN RESMI (4 BERKAS) */}
+          <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-emerald-600" />
+                  2. Dokumen Permohonan Resmi (4 Berkas Wajib)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Surat permohonan sertifikasi, komitmen direksi, bukti transfer, dan rekening LKS
+                </p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 w-fit">
+                4 Berkas Lengkap
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {[
+                {
+                  title: '1. Surat Permohonan Sertifikasi Syariah Resmi',
+                  doc: findDoc('surat permohonan sertifikasi') || (submission.officialLetterUrl ? { id: 'official-letter', fileName: submission.officialLetterName || 'Surat_Permohonan.pdf', fileUrl: submission.officialLetterUrl, fileSize: submission.officialLetterSize || 0 } : null),
+                },
+                { title: '2. Surat Komitmen Direksi untuk Melaksanakan Usaha Syariah', doc: findDoc('komitmen direksi') },
+                { title: '3. Bukti Transfer Biaya Pendaftaran Sertifikasi Syariah', doc: findDoc('bukti transfer') },
+                { title: '4. Bukti Kepemilikan Rekening di Lembaga Keuangan Syariah (LKS)', doc: findDoc('rekening') },
+              ].map((item, idx) => (
+                <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border flex items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="text-xs font-bold text-foreground truncate" title={item.title}>
+                      {item.title}
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground truncate">
+                      {item.doc ? `${item.doc.fileName} (${formatFileSize(item.doc.fileSize)})` : 'Belum diunggah'}
+                    </div>
+                  </div>
+                  {item.doc ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setPreviewDoc({
+                            isOpen: true,
+                            title: item.title,
+                            fileUrl: item.doc!.fileUrl,
+                            fileSize: item.doc!.fileSize,
+                          })
+                        }
+                        leftIcon={<Eye className="w-3.5 h-3.5" />}
+                        className="text-xs py-1"
+                      >
+                        Lihat
+                      </Button>
+                      <a href={getFileUrl(item.doc.fileUrl)} download={item.doc.fileName} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="sm" className="p-1.5 h-auto">
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded">
+                      Belum Ada
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. CALON DEWAN PENGAWAS SYARIAH (DPS) RUMAH SAKIT */}
+          {candidatesList.length > 0 && (
+            <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Users className="w-5 h-5 text-emerald-600" />
+                    3. Kelengkapan Calon Dewan Pengawas Syariah (DPS) Rumah Sakit
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Data identitas dan 4 berkas kualifikasi syariah untuk setiap calon DPS yang diusulkan
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary text-primary border border-emerald-200 w-fit">
+                  Total {candidatesList.length} Calon DPS
+                </span>
+              </div>
+
+              <div className="space-y-6">
+                {candidatesList.map((cand, cIdx) => {
+                  const docs = getNormalizedCandidateDocs(cand.documents);
+                  const validDocsCount = docs.filter((d: any) => Boolean(d.fileUrl)).length;
+                  return (
+                    <div
+                      key={cand.id || cIdx}
+                      className="p-5 rounded-2xl bg-muted/20 border border-border space-y-4 hover:border-emerald-500/40 transition-colors"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center text-xs">
+                            #{cIdx + 1}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-foreground">{cand.name}</h4>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              {cand.nik && <span>NIK: {cand.nik}</span>}
+                              {cand.email && <span>Email: {cand.email}</span>}
+                              {cand.phone && <span>Telp: {cand.phone}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg border border-emerald-200/50 w-fit">
+                          {validDocsCount} dari 4 Berkas Calon Lengkap
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {docs.map((docItem: any, dIdx: number) => {
+                          const hasFile = Boolean(docItem.fileUrl);
+                          return (
+                            <div
+                              key={dIdx}
+                              className="p-3 rounded-xl bg-white dark:bg-[#121a14] border border-border/80 flex flex-col justify-between gap-2 shadow-xs"
+                            >
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                                  <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] shrink-0">
+                                    {dIdx + 1}
+                                  </span>
+                                  <span className="truncate" title={docItem.title}>
+                                    {docItem.title}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-mono text-muted-foreground truncate">
+                                  {hasFile
+                                    ? `${docItem.fileName} (${formatFileSize(docItem.fileSize)})`
+                                    : 'Belum diunggah'}
+                                </p>
+                              </div>
+
+                              {hasFile ? (
+                                <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setPreviewDoc({
+                                        isOpen: true,
+                                        title: `${cand.name} - ${docItem.title}`,
+                                        fileUrl: docItem.fileUrl,
+                                        fileSize: docItem.fileSize,
+                                      })
+                                    }
+                                    leftIcon={<Eye className="w-3.5 h-3.5" />}
+                                    className="flex-1 text-[11px] py-1 h-auto"
+                                  >
+                                    Lihat
+                                  </Button>
+                                  <a
+                                    href={getFileUrl(docItem.fileUrl)}
+                                    download={docItem.fileName}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Button variant="ghost" size="sm" className="p-1.5 h-auto">
+                                      <Download className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-amber-600 font-medium pt-1">
+                                  Belum Dilampirkan
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 4. DOKUMEN KHUSUS RUMAH SAKIT (3 BERKAS) */}
+          <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <Award className="w-5 h-5 text-emerald-600" />
+                  4. Dokumen Khusus Rumah Sakit (3 Berkas Wajib)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Rekomendasi MUKISI, sertifikat halal BPJPH/LPPOM, dan akreditasi rumah sakit
+                </p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 w-fit">
+                {hospitalDocsList.length} dari 3 Berkas Terlampir
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {[
+                { title: '1. Sertifikat / Surat Rekomendasi MUKISI', doc: findDoc('mukisi') },
+                { title: '2. Sertifikat Halal BPJPH / LPPOM-MUI', doc: findDoc('halal') },
+                { title: '3. Sertifikat Kelulusan Akreditasi Rumah Sakit', doc: findDoc('akreditasi') },
+              ].map((item, idx) => (
+                <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border flex items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="text-xs font-bold text-foreground truncate" title={item.title}>
+                      {item.title}
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground truncate">
+                      {item.doc ? `${item.doc.fileName} (${formatFileSize(item.doc.fileSize)})` : 'Belum diunggah'}
+                    </div>
+                  </div>
+                  {item.doc ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setPreviewDoc({
+                            isOpen: true,
+                            title: item.title,
+                            fileUrl: item.doc!.fileUrl,
+                            fileSize: item.doc!.fileSize,
+                          })
+                        }
+                        leftIcon={<Eye className="w-3.5 h-3.5" />}
+                        className="text-xs py-1"
+                      >
+                        Lihat
+                      </Button>
+                      <a href={getFileUrl(item.doc.fileUrl)} download={item.doc.fileName} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="sm" className="p-1.5 h-auto">
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded">
+                      Belum Ada
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NON-RS / DPS STANDARD DOCUMENTS SECTIONS ── */}
+      {!isRsSubmission && (
+        <>
+          {/* ── COMPANY OFFICIAL LETTER (Syarat #1) ── */}
+          <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -1001,6 +1572,8 @@ export const SubmissionDetailPage: React.FC = () => {
           ))}
         </div>
       </div>
+      </>
+      )}
 
       {/* ── INTERACTIVE EDIT & REVISION MODAL (GANTI / TAMBAH LAMPIRAN) ── */}
       {showRevisionModal && (

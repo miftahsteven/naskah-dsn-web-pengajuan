@@ -158,7 +158,8 @@ export interface PublicSubmission {
   submissionNumber: string;
   companyId: string;
   company?: Company;
-  applicantUserId: string;
+  user?: User;
+  applicantUserId?: string;
   applicantUser?: User;
   submissionTypeId?: string;
   submissionType?: SubmissionTypeMaster;

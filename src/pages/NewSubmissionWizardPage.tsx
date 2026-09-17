@@ -26,14 +26,21 @@ import {
   Paperclip,
   Check,
   ShieldCheck,
+  HeartPulse,
+  Lock,
 } from 'lucide-react';
 import { DpsSubmissionForm } from '../components/submissions/DpsSubmissionForm';
+import { KesesuaianSyariahRsForm } from '../components/submissions/KesesuaianSyariahRsForm';
 
 export const NewSubmissionWizardPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const typeCodeParam = searchParams.get('typeCode');
+  const sectorParam = searchParams.get('sector');
+  const [selectedSector, setSelectedSector] = useState<'RS' | 'NON_RS' | null>(
+    sectorParam === 'RS' ? 'RS' : null
+  );
   const { user, company } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -302,6 +309,15 @@ export const NewSubmissionWizardPage: React.FC = () => {
     submissionData.title?.includes('DPS') ||
     submissionData.productOrServiceName?.includes('DPS');
 
+  const isKesesuaianSyariahService =
+    selectedTypeMaster?.code === 'KESESUAIAN_SYARIAH' ||
+    typeCodeParam === 'KESESUAIAN_SYARIAH' ||
+    typeCodeParam === 'KESESUAIAN_SYARIAH_RS';
+
+  const isKesesuaianSyariahRs =
+    isKesesuaianSyariahService &&
+    (selectedSector === 'RS' || sectorParam === 'RS' || typeCodeParam === 'KESESUAIAN_SYARIAH_RS');
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
       {/* ── SPECIALIZED DPS FORM FLOW ── */}
@@ -348,6 +364,154 @@ export const NewSubmissionWizardPage: React.FC = () => {
             }}
             onCancel={() => navigate('/dashboard')}
           />
+        </div>
+      ) : isKesesuaianSyariahRs && currentStep < 5 ? (
+        /* ── SPECIALIZED KESESUAIAN SYARIAH RUMAH SAKIT FLOW ── */
+        <div className="space-y-6">
+          <KesesuaianSyariahRsForm
+            initialSubmissionId={submissionId}
+            onSuccess={(data) => {
+              setSubmittedResult(data);
+              setCurrentStep(5);
+              confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.6 },
+              });
+            }}
+            onCancel={() => navigate('/dashboard')}
+          />
+        </div>
+      ) : isKesesuaianSyariahService && !selectedSector && !sectorParam && currentStep < 5 ? (
+        /* ── SECTOR SELECTION: RUMAH SAKIT VS NON RUMAH SAKIT ── */
+        <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-primary" /> Pilihan Sektor Kesesuaian Syariah
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                Pilih Sektor Pengajuan Kesesuaian Syariah
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Tentukan kategori permohonan untuk membuka formulir dan ketentuan berkas persyaratan yang sesuai.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/submissions/new')}
+              className="self-start sm:self-auto rounded-2xl text-xs font-bold shrink-0"
+            >
+              Ganti Layanan
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* OPSI 1: RUMAH SAKIT (AKTIF) */}
+            <div
+              onClick={() => {
+                setSelectedSector('RS');
+                setSearchParams({ typeCode: 'KESESUAIAN_SYARIAH', sector: 'RS' });
+              }}
+              className="group relative cursor-pointer rounded-3xl p-6 bg-gradient-to-b from-emerald-50/60 via-white to-white dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 border-2 border-emerald-500 hover:border-emerald-600 shadow-md hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 flex flex-col justify-between"
+            >
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                    <HeartPulse className="w-7 h-7" />
+                  </div>
+                  <span className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-xs">
+                    Layanan Aktif
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-extrabold text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-2">
+                    Rumah Sakit
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  </h3>
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    Sertifikasi & Kesesuaian Syariah Rumah Sakit
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    Pengajuan resmi sertifikasi syariah bagi institusi rumah sakit umum, RS swasta, dan fasilitas kesehatan bersama MUKISI dan DSN-MUI.
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Kelengkapan Dokumen Wajib:
+                  </div>
+                  <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span>7 Dokumen Legalitas Lengkap RS</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span>4 Dokumen Permohonan & Rekening LKS</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span>Kelengkapan Calon DPS (Multi-Kandidat)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span>3 Berkas Khusus RS (MUKISI, BPJPH, Akreditasi RS)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-5 mt-4 border-t border-emerald-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                <span>Pilih Sektor Rumah Sakit</span>
+                <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center group-hover:translate-x-1 transition-transform shadow-xs">
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* OPSI 2: NON RUMAH SAKIT (COMING SOON) */}
+            <div className="relative rounded-3xl p-6 bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed flex flex-col justify-between select-none">
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center">
+                    <Building2 className="w-7 h-7" />
+                  </div>
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> Segera Hadir
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-700 dark:text-slate-300">
+                    Non Rumah Sakit
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                    Lembaga Bisnis, Keuangan, Fintech & Korporasi Umum
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    Pengajuan kesesuaian syariah untuk lembaga keuangan non-bank, perbankan, pasar modal, koperasi syariah, perhotelan, dan entitas bisnis non-faskes.
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Tahap Pengerjaan:
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Layanan ini akan segera diaktifkan pada tahap berikutnya setelah flow Rumah Sakit selesai diimplementasikan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-5 mt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                <span>Tahap Berikutnya</span>
+                <span className="text-xs font-mono font-bold">Segera Hadir</span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : currentStep < 5 ? (
         /* ── GENERIC 4-STEP WIZARD STEPPER HEADER ── */
@@ -921,31 +1085,59 @@ export const NewSubmissionWizardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 5 Tahapan Alur Roadmap for DPS */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-left max-w-lg mx-auto space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Alur 5 Tahap Proses Rekomendasi DPS:</span>
+          {/* 5 Tahapan Alur Roadmap */}
+          {submittedResult.productOrServiceName?.toLowerCase().includes('rumah sakit') ||
+          submittedResult.title?.toLowerCase().includes('rumah sakit') ? (
+            <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-left max-w-lg mx-auto space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Alur 5 Tahap Kesesuaian Syariah Rumah Sakit:</span>
+              </div>
+              <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">1</span>
+                  <span>Proses Pengajuan (Tercatat di Surat Masuk DSN-MUI)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>2. Validasi Dokumen (7 Legalitas RS, 4 Permohonan, Calon DPS, 3 Berkas Khusus)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>3. Asesmen Syariah & Wawancara (Verifikasi bersama MUKISI & DSN-MUI)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>4. Sidang Pleno BPH DSN-MUI (Penetapan rekomendasi syariah)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>5. Penerbitan Sertifikat Kesesuaian Syariah Rumah Sakit</span>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
-              <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
-                <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">1</span>
-                <span>Proses Pengajuan (Sedang Berjalan di Antrean)</span>
+          ) : (
+            <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-left max-w-lg mx-auto space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Alur 5 Tahap Proses Rekomendasi DPS:</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-500 pl-7">
-                <span>2. Validasi Dokumen (Pemeriksaan berkas & persyaratan)</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-500 pl-7">
-                <span>3. Wawancara (Uji kompetensi syariah calon DPS)</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-500 pl-7">
-                <span>4. Proses Internal (Sidang pleno komisi & BPH DSN-MUI)</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-500 pl-7">
-                <span>5. Lulus / Tidak Lulus (Penerbitan Surat Rekomendasi Resmi)</span>
+              <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">1</span>
+                  <span>Proses Pengajuan (Sedang Berjalan di Antrean)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>2. Validasi Dokumen (Pemeriksaan berkas & persyaratan)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>3. Wawancara (Uji kompetensi syariah calon DPS)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>4. Proses Internal (Sidang pleno komisi & BPH DSN-MUI)</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 pl-7">
+                  <span>5. Lulus / Tidak Lulus (Penerbitan Surat Rekomendasi Resmi)</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-4">
             <Button
