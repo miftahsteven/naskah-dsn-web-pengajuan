@@ -36,8 +36,10 @@ import {
   Award,
   Info,
   FileCheck2,
+  Timer,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { calculateSlaStatus } from '../lib/business-days';
 import { OfficialInterviewInvitationModal } from '../components/submissions/OfficialInterviewInvitationModal';
 import { EditSubmissionDocumentsModal } from '../components/submissions/EditSubmissionDocumentsModal';
 
@@ -296,7 +298,7 @@ export const SubmissionDetailPage: React.FC = () => {
               {isRsSubmission && (
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center gap-1.5">
                   <HeartPulse className="w-3.5 h-3.5 text-emerald-600" />
-                  Kesesuaian Syariah Rumah Sakit
+                  Sertifikasi Syariah Rumah Sakit
                 </span>
               )}
               {isDps && (
@@ -332,6 +334,128 @@ export const SubmissionDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── REAL-TIME 14 WORKING DAYS SLA COUNTDOWN TRACKER ── */}
+      {submission.status !== 'DRAFT' && (() => {
+        const sla = calculateSlaStatus(
+          submission.submittedAt || submission.createdAt,
+          submission.completedAt || (['SELESAI', 'SERTIFIKAT_DITERBITKAN'].includes(submission.status) ? submission.updatedAt : null),
+          14
+        );
+
+        return (
+          <div
+            className={`p-6 sm:p-7 rounded-3xl border shadow-sm space-y-4 relative overflow-hidden transition-all ${
+              sla.isCompleted
+                ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-emerald-500/30'
+                : sla.isOverdue
+                ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800'
+                : sla.remainingWorkingDays <= 3
+                ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'
+                : 'bg-white dark:bg-[#172019] border-border'
+            }`}
+          >
+            {/* Top decorative badge */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3.5">
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                  sla.isCompleted
+                    ? 'bg-emerald-600 text-white'
+                    : sla.isOverdue
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                }`}>
+                  <Timer className="w-3.5 h-3.5" />
+                  SLA Pelayanan: 14 Hari Kerja
+                </span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  (Senin – Jumat, tidak menghitung hari Sabtu, Minggu & libur resmi)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-black px-3.5 py-1 rounded-full shadow-xs ${
+                  sla.isCompleted
+                    ? 'bg-emerald-600 text-white'
+                    : sla.isOverdue
+                    ? 'bg-rose-600 text-white'
+                    : sla.remainingWorkingDays <= 3
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-emerald-600 text-white'
+                }`}>
+                  ⏱️ {sla.label}
+                </span>
+              </div>
+            </div>
+
+            {/* SLA Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 space-y-1">
+                <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  Tanggal Pengajuan Masuk
+                </div>
+                <div className="font-extrabold text-foreground text-sm">
+                  {formatDate(sla.submittedAt || submission.createdAt)}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 space-y-1">
+                <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-primary" />
+                  Target Batas Waktu (14 Hari Kerja)
+                </div>
+                <div className="font-extrabold text-foreground text-sm">
+                  {sla.targetDeadline
+                    ? sla.targetDeadline.toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : '-'}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 space-y-1">
+                <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                  Realisasi / Sisa Waktu
+                </div>
+                <div className="font-extrabold text-foreground text-sm">
+                  {sla.isCompleted
+                    ? `${sla.workingDaysElapsed} Hari Kerja Digunakan (${sla.isOverdue ? 'Melebihi SLA' : 'Memenuhi Target SLA'})`
+                    : sla.isOverdue
+                    ? `Terlewat ${sla.overdueDays} Hari Kerja dari Target`
+                    : `${sla.workingDaysElapsed} Hari Berjalan • Sisa ${sla.remainingWorkingDays} Hari Kerja`}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                <span>Progres Durasi SLA: {sla.workingDaysElapsed} dari 14 Hari Kerja</span>
+                <span>{sla.percentUsed}% Waktu Berjalan</span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-secondary overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    sla.isCompleted
+                      ? 'bg-emerald-600'
+                      : sla.isOverdue
+                      ? 'bg-rose-600'
+                      : sla.percentUsed > 75
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${sla.percentUsed}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── RS INSTITUTIONAL IDENTITY & NPWP CARD ── */}
       {isRsSubmission && (
@@ -422,7 +546,7 @@ export const SubmissionDetailPage: React.FC = () => {
             <div>
               <h3 className="text-base font-bold text-foreground flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                Alur Tahapan Kesesuaian Syariah Rumah Sakit
+                Alur Tahapan Sertifikasi Syariah Rumah Sakit
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Tahapan audit, asesmen kesesuaian syariah & penetapan sertifikat DSN-MUI
@@ -610,131 +734,284 @@ export const SubmissionDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── DPS STAGE 3: SURAT UNDANGAN WAWANCARA RESMI CALON DPS (OFFICIAL INVITATION CARD) ── */}
-      {isDps && (currentDpsStage === 'WAWANCARA' || Boolean(submission.interviewInvitation)) && (() => {
-        const invitationData = submission.interviewInvitation || {
+      {/* ── STAGE 3: SURAT UNDANGAN WAWANCARA RESMI (RS & DPS, MULTI-PUTARAN) ── */}
+      {(isDps || isRsSubmission) && (currentDpsStage === 'WAWANCARA' || Boolean(submission.interviewInvitation) || ((submission.interviewHistory as any[])?.length || 0) > 0) && (() => {
+        const activeHistory = Array.isArray(submission.interviewHistory)
+          ? submission.interviewHistory
+          : [];
+        const invitationData = submission.interviewInvitation || (activeHistory.length > 0 ? activeHistory[activeHistory.length - 1] : {
+          round: 1,
           invitationNumber: `UND-WW/DSN-MUI/IX/2026/012`,
           invitationDate: formatDate(submission.updatedAt || new Date().toISOString()),
           interviewDayDate: 'Kamis, 17 September 2026',
           interviewTime: '09:30 - 12:00',
           format: 'OFFLINE' as const,
           venue: 'Ruang Rapat Pleno DSN-MUI Lt. 3, Gedung MUI Pusat, Jl. Proklamasi No. 51, Menteng, Jakarta Pusat',
-          subject: `Undangan Wawancara Uji Kepatutan dan Kelayakan Calon Anggota DPS Terkait Surat No. ${submission.companyLetterNumber || submission.submissionNumber}`,
-          candidates: candidatesList.length > 0 ? candidatesList.map((c: any) => c.name) : ['Calon Anggota Dewan Pengawas Syariah'],
+          subject: isRsSubmission
+            ? `Undangan Wawancara & Asesmen Sertifikasi Syariah Rumah Sakit Terkait Surat No. ${submission.companyLetterNumber || submission.submissionNumber}`
+            : `Undangan Wawancara Uji Kepatutan dan Kelayakan Calon Anggota DPS Terkait Surat No. ${submission.companyLetterNumber || submission.submissionNumber}`,
+          candidates: candidatesList.length > 0
+            ? candidatesList.map((c: any) => c.name)
+            : isRsSubmission
+            ? ['Direksi & Manajemen Rumah Sakit', 'Calon DPS Rumah Sakit']
+            : ['Calon Anggota Dewan Pengawas Syariah'],
           dresscode: 'Pakaian Sipil Lengkap / Batik Lengan Panjang / Jas Rapi',
-          requirements: 'Membawa berkas fisik asli, portofolio riwayat hidup, serta bahan pemaparan kesiapan kepengawasan syariah.',
+          requirements: isRsSubmission
+            ? 'Membawa berkas fisik legalitas RS, sertifikat MUKISI, kesiapan operasional syariah, dan portofolio calon DPS.'
+            : 'Membawa berkas fisik asli, portofolio riwayat hidup, serta bahan pemaparan kesiapan kepengawasan syariah.',
           contactPerson: 'Sekretariat DSN-MUI (021-3904141 / wa.me/6281234567890)',
-          notes: 'Calon DPS dimohon hadir 15 menit sebelum waktu wawancara dimulai.',
+          notes: 'Peserta dimohon hadir 15 menit sebelum waktu wawancara dimulai.',
           signatoryName: 'Prof. Dr. KH. Hasanuddin, M.Ag',
           signatoryRole: 'Ketua Bidang Pengawasan Syariah DSN-MUI',
-        };
+          status: 'SCHEDULED',
+        });
+
+        const activeRoundNumber = invitationData.round || activeHistory.length || 1;
+        const currentAssessment = invitationData.assessment;
+        const isInterviewPassed = invitationData.status === 'PASSED' || currentAssessment?.decision === 'DITERIMA';
+        const isInterviewFailed = invitationData.status === 'FAILED' || currentAssessment?.decision === 'DITOLAK';
 
         return (
-          <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border-2 border-emerald-500/80 shadow-lg space-y-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Top decorative accent */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-400" />
+          <div className="space-y-4">
+            <div className={`p-6 sm:p-8 rounded-3xl border-2 shadow-lg space-y-6 relative overflow-hidden animate-in zoom-in-95 duration-200 ${
+              isInterviewPassed
+                ? 'bg-white dark:bg-[#172019] border-emerald-500/80'
+                : isInterviewFailed
+                ? 'bg-amber-50/50 dark:bg-slate-900 border-amber-500/80'
+                : 'bg-white dark:bg-[#172019] border-emerald-500/80'
+            }`}>
+              {/* Top decorative accent */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-400" />
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-600 text-white shadow-xs flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Undangan Wawancara DSN-MUI Diterbitkan
-                  </span>
-                  <span className="font-mono text-xs font-bold text-slate-500 bg-secondary px-2.5 py-0.5 rounded-lg border border-border">
-                    {invitationData.invitationNumber}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Tertanggal: {invitationData.invitationDate}
-                  </span>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-600 text-white shadow-xs flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Wawancara Putaran Ke-{activeRoundNumber}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-slate-500 bg-secondary px-2.5 py-0.5 rounded-lg border border-border">
+                      {invitationData.invitationNumber}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Tertanggal: {invitationData.invitationDate}
+                    </span>
+
+                    {/* Status Badge */}
+                    {isInterviewPassed ? (
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        ✅ Lulus / Diterima (Skor: {currentAssessment?.score || 85})
+                      </span>
+                    ) : isInterviewFailed ? (
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                        ⚠️ Perlu Wawancara Ulang (Skor: {currentAssessment?.score || '-'})
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        🗓️ Terjadwal
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-black text-foreground tracking-tight pt-1">
+                    {isRsSubmission
+                      ? `Surat Undangan Wawancara & Asesmen Syariah Rumah Sakit (Putaran Ke-${activeRoundNumber})`
+                      : `Surat Undangan Wawancara Calon Dewan Pengawas Syariah (Putaran Ke-${activeRoundNumber})`}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {isRsSubmission
+                      ? 'Menghadiri asesmen kesiapan kepatuhan syariah RS bersama DSN-MUI & MUKISI sesuai Surat Permohonan No. '
+                      : 'Menghadiri Wawancara Uji Kepatutan dan Kelayakan (Fit and Proper Test) calon DPS sesuai Surat Pengantar No. '}
+                    <strong className="text-foreground font-mono font-bold">
+                      {submission.companyLetterNumber || submission.submissionNumber}
+                    </strong>
+                  </p>
                 </div>
-                <h3 className="text-base sm:text-lg font-black text-foreground tracking-tight pt-1">
-                  Surat Undangan Wawancara Calon Dewan Pengawas Syariah (DPS)
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Menghadiri Wawancara Uji Kepatutan dan Kelayakan (Fit and Proper Test) terkait permohonan rekomendasi DPS sesuai Surat Pengantar No.{' '}
-                  <strong className="text-foreground font-mono font-bold">
-                    {submission.companyLetterNumber || submission.submissionNumber}
-                  </strong>
-                </p>
+
+                <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+                  {invitationData.zoomUrl && (
+                    <a
+                      href={invitationData.zoomUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
+                    >
+                      <Video className="w-4 h-4" /> Masuk Zoom
+                    </a>
+                  )}
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => setShowInvitationModal(true)}
+                    leftIcon={<FileText className="w-4 h-4" />}
+                    className="shadow-md"
+                  >
+                    Lihat Undangan Resmi
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => setShowInvitationModal(true)}
+                    leftIcon={<Printer className="w-4 h-4" />}
+                  >
+                    Cetak
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setShowInvitationModal(true)}
-                  leftIcon={<FileText className="w-4 h-4" />}
-                  className="shadow-md"
-                >
-                  Lihat Surat Undangan Resmi (Kop DSN-MUI)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={() => setShowInvitationModal(true)}
-                  leftIcon={<Printer className="w-4 h-4" />}
-                >
-                  Cetak
-                </Button>
+              {/* Assessment Evaluation Feedback Box (if already assessed) */}
+              {currentAssessment && (
+                <div className={`p-4 sm:p-5 rounded-2xl border text-xs space-y-2 ${
+                  isInterviewPassed
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="font-extrabold flex items-center gap-1.5 text-sm">
+                      {isInterviewPassed ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+                      <span>Hasil Penilaian Wawancara Putaran Ke-{activeRoundNumber}: {currentAssessment.decision}</span>
+                    </div>
+                    <span className="font-mono font-bold px-2.5 py-0.5 rounded-md bg-white dark:bg-slate-900 border text-xs">
+                      Nilai: {currentAssessment.score} / 100
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed">
+                    <strong>Catatan Evaluasi Tim Penguji ({currentAssessment.assessedByName || 'DSN-MUI'}):</strong> {currentAssessment.notes}
+                  </p>
+                  {currentAssessment.improvementNotes && (
+                    <p className="text-xs font-semibold mt-1">
+                      <strong>Petunjuk Perbaikan Wawancara Ulang:</strong> {currentAssessment.improvementNotes}
+                    </p>
+                  )}
+                  {isInterviewFailed && (
+                    <div className="mt-2 pt-2 border-t border-rose-200 dark:border-rose-800 text-[11px] font-bold text-rose-800 dark:text-rose-300">
+                      ℹ️ Anda dapat mengulang wawancara tanpa batasan jumlah putaran. DSN-MUI akan menerbitkan jadwal wawancara ulang putaran berikutnya.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Grid Detail Pelaksanaan Wawancara */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    Hari & Tanggal
+                  </div>
+                  <p className="text-xs sm:text-sm font-extrabold text-foreground">
+                    {invitationData.interviewDayDate}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                    <Clock className="w-4 h-4 text-emerald-600" />
+                    Waktu Pelaksanaan
+                  </div>
+                  <p className="text-xs sm:text-sm font-extrabold text-foreground">
+                    {invitationData.interviewTime} WIB
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-1 sm:col-span-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                    <MapPin className="w-4 h-4 text-emerald-600" />
+                    Tempat / Ruang Wawancara
+                  </div>
+                  <p className="text-xs font-bold text-foreground leading-snug">
+                    {invitationData.venue}
+                  </p>
+                  {invitationData.zoomMeetingId && (
+                    <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                      Meeting ID: {invitationData.zoomMeetingId} • Passcode: {invitationData.zoomPasscode || '-'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Peserta yang Diundang & Narahubung */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 font-bold text-foreground">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    <span>Peserta yang Diundang Wawancara:</span>
+                  </div>
+                  <p className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm">
+                    {Array.isArray(invitationData.candidates) ? invitationData.candidates.join(', ') : invitationData.candidates}
+                  </p>
+                  <p className="text-muted-foreground text-[11px] pt-0.5">
+                    Ketentuan: {invitationData.dresscode} • {invitationData.requirements}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-[11px] text-muted-foreground text-right hidden sm:block">
+                    <span className="block font-bold text-foreground">Narahubung DSN-MUI:</span>
+                    <span>{invitationData.contactPerson}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Grid Detail Pelaksanaan Wawancara */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-              <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-1">
-                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                  <Calendar className="w-4 h-4 text-emerald-600" />
-                  Hari & Tanggal
+            {/* Riwayat Putaran Wawancara Sebelumnya (jika ada > 1 putaran) */}
+            {activeHistory.length > 1 && (
+              <div className="bg-white dark:bg-[#172019] p-5 rounded-3xl border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-primary" />
+                    Riwayat Multi-Putaran Wawancara ({activeHistory.length} Putaran Dilaksanakan)
+                  </h4>
+                  <span className="text-[10px] text-muted-foreground">
+                    Sistem mendukung pengulangan interview tanpa batasan
+                  </span>
                 </div>
-                <p className="text-xs sm:text-sm font-extrabold text-foreground">
-                  {invitationData.interviewDayDate}
-                </p>
-              </div>
 
-              <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-1">
-                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                  <Clock className="w-4 h-4 text-emerald-600" />
-                  Waktu Pelaksanaan
-                </div>
-                <p className="text-xs sm:text-sm font-extrabold text-foreground">
-                  {invitationData.interviewTime} WIB
-                </p>
-              </div>
+                <div className="space-y-2">
+                  {activeHistory.map((h: any, hIdx: number) => {
+                    const isPassedH = h.status === 'PASSED' || h.assessment?.decision === 'DITERIMA';
+                    const isFailedH = h.status === 'FAILED' || h.assessment?.decision === 'DITOLAK';
 
-              <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-1 sm:col-span-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                  <MapPin className="w-4 h-4 text-emerald-600" />
-                  Tempat / Ruang Wawancara
-                </div>
-                <p className="text-xs font-bold text-foreground leading-snug">
-                  {invitationData.venue}
-                </p>
-              </div>
-            </div>
+                    return (
+                      <div
+                        key={hIdx}
+                        className="p-3.5 rounded-2xl bg-secondary/40 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-foreground">Putaran Ke-{h.round || hIdx + 1}</span>
+                            <span className="font-mono text-[11px] text-muted-foreground">({h.invitationNumber})</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isPassedH
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : isFailedH
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                            }`}>
+                              {isPassedH ? 'LULUS' : isFailedH ? 'PERLU ULANG' : 'TERJADWAL'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {h.interviewDayDate} • {h.interviewTime} WIB • Lokasi: {h.venue}
+                          </p>
+                          {h.assessment && (
+                            <p className="text-[11px] text-foreground font-medium pt-0.5">
+                              Nilai: <strong>{h.assessment.score}</strong> • Catatan: "{h.assessment.notes}"
+                            </p>
+                          )}
+                        </div>
 
-            {/* Calon DPS Diundang & Catatan */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 font-bold text-foreground">
-                  <Users className="w-4 h-4 text-emerald-600" />
-                  <span>Kandidat Calon DPS yang Diundang Wawancara:</span>
-                </div>
-                <p className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm">
-                  {invitationData.candidates.join(', ')}
-                </p>
-                <p className="text-muted-foreground text-[11px] pt-0.5">
-                  Ketentuan: {invitationData.dresscode} • {invitationData.requirements}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="text-[11px] text-muted-foreground text-right hidden sm:block">
-                  <span className="block font-bold text-foreground">Narahubung:</span>
-                  <span>{invitationData.contactPerson}</span>
+                        {h.assessment?.decision && (
+                          <div className="text-right shrink-0">
+                            <span className="text-[10px] text-muted-foreground block">Penilai:</span>
+                            <span className="font-semibold text-foreground text-[11px]">{h.assessment.assessedByName}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         );
       })()}

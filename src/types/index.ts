@@ -133,6 +133,7 @@ export interface PublicSubmissionCandidate {
 }
 
 export interface InterviewInvitation {
+  round?: number;
   invitationNumber: string;
   invitationDate: string;
   interviewDayDate: string;
@@ -150,6 +151,15 @@ export interface InterviewInvitation {
   notes?: string | null;
   signatoryName?: string;
   signatoryRole?: string;
+  status?: 'SCHEDULED' | 'PASSED' | 'FAILED' | string;
+  assessment?: {
+    assessedByName?: string;
+    assessedAt?: string;
+    score?: number;
+    decision?: 'DITERIMA' | 'DITOLAK' | string;
+    notes?: string;
+    improvementNotes?: string | null;
+  } | null;
   createdAt?: string;
 }
 
@@ -193,11 +203,13 @@ export interface PublicSubmission {
     | string;
   stepCompleted: number;
   submittedAt?: string;
+  completedAt?: string | null;
   erpDocumentId?: string;
   candidates?: PublicSubmissionCandidate[];
   dpsStage?: string;
   validationType?: string;
   interviewInvitation?: InterviewInvitation;
+  interviewHistory?: any[];
   documents?: PublicSubmissionDocument[];
   timeline?: PublicSubmissionActivity[];
   revisions?: PublicSubmissionRevision[];

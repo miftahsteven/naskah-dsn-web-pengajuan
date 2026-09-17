@@ -16,7 +16,9 @@ import {
   Calendar,
   AlertTriangle,
   FileBadge,
+  Timer,
 } from 'lucide-react';
+import { calculateSlaStatus } from '../lib/business-days';
 
 export const SubmissionsListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -214,6 +216,23 @@ export const SubmissionsListPage: React.FC = () => {
                       {sub.submissionNumber}
                     </span>
                     <Badge status={sub.status} size="sm" />
+                    {sub.status !== 'DRAFT' && (() => {
+                      const sla = calculateSlaStatus(sub.submittedAt || sub.createdAt, sub.completedAt, 14);
+                      return (
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md border shadow-2xs ${
+                          sla.isCompleted
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                            : sla.isOverdue
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
+                            : sla.remainingWorkingDays <= 3
+                            ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                        }`}>
+                          <Timer className="w-3 h-3" />
+                          {sla.label}
+                        </span>
+                      );
+                    })()}
                     {sub.companyLetterNumber && (
                       <span className="text-[11px] text-muted-foreground font-mono">
                         Surat: {sub.companyLetterNumber}

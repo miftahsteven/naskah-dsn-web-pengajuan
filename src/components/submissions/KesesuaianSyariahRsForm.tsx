@@ -706,7 +706,7 @@ Khusus untuk instansi yang baru mendaftar, siapkan:
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
               <HeartPulse className="w-6 h-6 text-red-400" />
-              Permohonan Kesesuaian Syariah Rumah Sakit
+              Permohonan Sertifikasi Syariah Rumah Sakit
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/90 max-w-2xl leading-relaxed">
               Lengkapi berkas hukum legalitas rumah sakit, surat permohonan sertifikasi, kelengkapan calon Dewan Pengawas Syariah (DPS), serta dokumen akreditasi dan rekomendasi MUKISI.

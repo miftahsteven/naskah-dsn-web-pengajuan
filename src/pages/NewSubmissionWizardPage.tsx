@@ -309,14 +309,19 @@ export const NewSubmissionWizardPage: React.FC = () => {
     submissionData.title?.includes('DPS') ||
     submissionData.productOrServiceName?.includes('DPS');
 
+  const isSertifikasiSyariahService =
+    selectedTypeMaster?.code === 'SERTIFIKASI_KESESUAIAN_SYARIAH' ||
+    typeCodeParam === 'SERTIFIKASI_KESESUAIAN_SYARIAH' ||
+    typeCodeParam === 'SERTIFIKASI_RS';
+
   const isKesesuaianSyariahService =
     selectedTypeMaster?.code === 'KESESUAIAN_SYARIAH' ||
     typeCodeParam === 'KESESUAIAN_SYARIAH' ||
     typeCodeParam === 'KESESUAIAN_SYARIAH_RS';
 
   const isKesesuaianSyariahRs =
-    isKesesuaianSyariahService &&
-    (selectedSector === 'RS' || sectorParam === 'RS' || typeCodeParam === 'KESESUAIAN_SYARIAH_RS');
+    (selectedSector === 'RS' || sectorParam === 'RS' || typeCodeParam === 'KESESUAIAN_SYARIAH_RS' || typeCodeParam === 'SERTIFIKASI_RS') &&
+    (isSertifikasiSyariahService || isKesesuaianSyariahService);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
@@ -382,19 +387,19 @@ export const NewSubmissionWizardPage: React.FC = () => {
             onCancel={() => navigate('/dashboard')}
           />
         </div>
-      ) : isKesesuaianSyariahService && !selectedSector && !sectorParam && currentStep < 5 ? (
-        /* ── SECTOR SELECTION: RUMAH SAKIT VS NON RUMAH SAKIT ── */
+      ) : (isSertifikasiSyariahService || (isKesesuaianSyariahService && sectorParam === 'RS')) && !selectedSector && !sectorParam && currentStep < 5 ? (
+        /* ── SECTOR SELECTION: RUMAH SAKIT VS NON RUMAH SAKIT (SERTIFIKASI SYARIAH) ── */
         <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-border shadow-subtle space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-primary" /> Pilihan Sektor Kesesuaian Syariah
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Pilihan Sektor Sertifikasi Syariah
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                Pilih Sektor Pengajuan Kesesuaian Syariah
+                Pilih Sektor Pengajuan Sertifikasi Syariah
               </h2>
               <p className="text-xs text-muted-foreground">
-                Tentukan kategori permohonan untuk membuka formulir dan ketentuan berkas persyaratan yang sesuai.
+                Tentukan kategori institusi untuk diarahkan ke formulir dan ketentuan berkas persyaratan yang tepat.
               </p>
             </div>
             <Button
@@ -412,7 +417,7 @@ export const NewSubmissionWizardPage: React.FC = () => {
             <div
               onClick={() => {
                 setSelectedSector('RS');
-                setSearchParams({ typeCode: 'KESESUAIAN_SYARIAH', sector: 'RS' });
+                setSearchParams({ typeCode: 'SERTIFIKASI_KESESUAIAN_SYARIAH', sector: 'RS' });
               }}
               className="group relative cursor-pointer rounded-3xl p-6 bg-gradient-to-b from-emerald-50/60 via-white to-white dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 border-2 border-emerald-500 hover:border-emerald-600 shadow-md hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 flex flex-col justify-between"
             >
@@ -432,7 +437,7 @@ export const NewSubmissionWizardPage: React.FC = () => {
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   </h3>
                   <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    Sertifikasi & Kesesuaian Syariah Rumah Sakit
+                    Permohonan Sertifikasi Syariah Rumah Sakit
                   </p>
                   <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                     Pengajuan resmi sertifikasi syariah bagi institusi rumah sakit umum, RS swasta, dan fasilitas kesehatan bersama MUKISI dan DSN-MUI.
@@ -1091,7 +1096,7 @@ export const NewSubmissionWizardPage: React.FC = () => {
             <div className="p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-left max-w-lg mx-auto space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Alur 5 Tahap Kesesuaian Syariah Rumah Sakit:</span>
+                <span>Alur 5 Tahap Sertifikasi Syariah Rumah Sakit:</span>
               </div>
               <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
                 <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">

@@ -28,8 +28,8 @@ export const ServiceSelectionModal: React.FC<ServiceSelectionModalProps> = ({
   );
 
   const handleSelectService = (service: DsnServiceDefinition) => {
-    if (service.code === 'KESESUAIAN_SYARIAH') {
-      // Prompt user with the 2-choice sub-sector selection: Rumah Sakit vs Non Rumah Sakit
+    if (service.code === 'SERTIFIKASI_KESESUAIAN_SYARIAH' || service.shortTitle.toLowerCase().includes('sertifikasi syariah')) {
+      // Prompt user with the 2-choice sub-sector selection: Rumah Sakit vs Non Rumah Sakit under Sertifikasi Syariah
       setSelectedSubSectorService(service);
       return;
     }
@@ -43,7 +43,7 @@ export const ServiceSelectionModal: React.FC<ServiceSelectionModalProps> = ({
     if (sector === 'NON_RS') return; // Disabled for now
     onClose();
     setSelectedSubSectorService(null);
-    navigate(`/submissions/new?typeCode=KESESUAIAN_SYARIAH&sector=RS`);
+    navigate(`/submissions/new?typeCode=SERTIFIKASI_KESESUAIAN_SYARIAH&sector=RS`);
   };
 
   const handleClose = () => {
@@ -66,7 +66,7 @@ export const ServiceSelectionModal: React.FC<ServiceSelectionModalProps> = ({
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-foreground">
               {selectedSubSectorService
-                ? 'Pilih Sektor Pengajuan Kesesuaian Syariah'
+                ? 'Pilih Sektor Pengajuan Sertifikasi Syariah'
                 : 'Pilih Layanan Pengajuan Syariah'}
             </h3>
             <p className="text-[11px] text-muted-foreground font-normal">
@@ -90,8 +90,8 @@ export const ServiceSelectionModal: React.FC<ServiceSelectionModalProps> = ({
               <ArrowLeft className="w-3.5 h-3.5" />
               Kembali ke Semua Layanan
             </button>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-              Kesesuaian Syariah
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              Sertifikasi Syariah
             </span>
           </div>
 
@@ -117,7 +117,7 @@ export const ServiceSelectionModal: React.FC<ServiceSelectionModalProps> = ({
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   </h4>
                   <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    Sertifikasi & Kesesuaian Syariah Rumah Sakit
+                    Permohonan Sertifikasi Syariah Rumah Sakit
                   </p>
                   <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                     Pengajuan resmi sertifikasi syariah bagi institusi rumah sakit umum, RS swasta, dan fasilitas kesehatan bersama MUKISI dan DSN-MUI.
