@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PortalLayout } from './components/layout/PortalLayout';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -16,6 +16,27 @@ import { CertificatesPage } from './pages/CertificatesPage';
 import { CompanyProfilePage } from './pages/CompanyProfilePage';
 import { HelpPage } from './pages/HelpPage';
 import { PublicVerifyCertificatePage } from './pages/PublicVerifyCertificatePage';
+
+const DocumentVerificationRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+
+  React.useEffect(() => {
+    if (id) {
+      window.location.replace(`/office/verify/document/${encodeURIComponent(id)}`);
+    } else {
+      window.location.replace('/office');
+    }
+  }, [id]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">
+      <div className="w-12 h-12 border-4 border-[#006633] border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest animate-pulse">
+        Mengalihkan ke Verifikasi Dokumen...
+      </p>
+    </div>
+  );
+};
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -47,6 +68,8 @@ export const App: React.FC = () => {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/verify/public/:certNumber" element={<PublicVerifyCertificatePage />} />
+            <Route path="/verify/document/:id" element={<DocumentVerificationRedirect />} />
+            <Route path="/verify/document" element={<DocumentVerificationRedirect />} />
 
             {/* Authenticated Portal Routes */}
             <Route
