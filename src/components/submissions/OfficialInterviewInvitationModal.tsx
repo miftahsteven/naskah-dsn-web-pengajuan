@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import type { InterviewInvitation, PublicSubmission } from '../../types';
+import { getFileUrl } from '../../lib/api';
 import {
   Printer,
   Download,
@@ -10,6 +11,8 @@ import {
   MapPin,
   Users,
   ShieldCheck,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 
 interface OfficialInterviewInvitationModalProps {
@@ -29,6 +32,8 @@ export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitat
     window.print();
   };
 
+  const effectiveLetterNumber = invitation.outgoingLetterNumber || invitation.invitationNumber;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -45,10 +50,20 @@ export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitat
               Dokumen Resmi DSN-MUI
             </span>
             <span className="text-xs font-mono text-muted-foreground font-semibold">
-              {invitation.invitationNumber}
+              {effectiveLetterNumber}
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {invitation.outgoingLetterFileUrl && (
+              <a
+                href={getFileUrl(invitation.outgoingLetterFileUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all"
+              >
+                <Download className="w-3.5 h-3.5" /> Unduh Berkas Asli (PDF)
+              </a>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -68,6 +83,32 @@ export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitat
           </div>
         </div>
 
+        {/* Surat Keluar Banner Notice */}
+        {invitation.outgoingLetterNumber && (
+          <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 flex items-center justify-between gap-3 text-xs no-print">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+              <div>
+                <span className="font-bold">Surat Keluar DSN-MUI Terlampir: </span>
+                <span className="font-mono font-bold">{invitation.outgoingLetterNumber}</span>
+                {invitation.outgoingLetterTitle && (
+                  <span className="text-blue-700 dark:text-blue-300 ml-1">({invitation.outgoingLetterTitle})</span>
+                )}
+              </div>
+            </div>
+            {invitation.outgoingLetterFileUrl && (
+              <a
+                href={getFileUrl(invitation.outgoingLetterFileUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-blue-600 hover:underline flex items-center gap-1 text-[11px] shrink-0"
+              >
+                Buka File <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        )}
+
         {/* ── KOP SURAT & LEMBAR DOKUMEN RESMI ── */}
         <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-2xl border border-slate-300 shadow-sm print:shadow-none print:border-none print:p-0 font-serif leading-relaxed text-sm space-y-6">
           {/* Header Kop DSN-MUI */}
@@ -84,7 +125,7 @@ export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitat
                   NATIONAL SHARIA BOARD - INDONESIAN COUNCIL OF ULAMA
                 </h3>
                 <p className="text-[11px] text-slate-600 font-sans">
-                  Gedung MUI Lt. 3, Jl. Proklamasi No. 51, Menteng, Jakarta Pusat 10320 • Telp: (021) 3904141 • Email: sekretariat@dsnmui.or.id
+                  Kantor DSN MUI Jl. Dempo No. 19 Pegangsaan, Menteng, Jakarta Pusat 10320 • Telp: (021) 3904141 • Email: sekretariat@dsnmui.or.id
                 </p>
               </div>
             </div>
@@ -97,7 +138,7 @@ export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitat
                 <tr>
                   <td className="font-semibold pr-3 py-0.5 text-slate-600">Nomor</td>
                   <td className="pr-2">:</td>
-                  <td className="font-bold font-mono text-slate-900">{invitation.invitationNumber}</td>
+                  <td className="font-bold font-mono text-slate-900">{effectiveLetterNumber}</td>
                 </tr>
                 <tr>
                   <td className="font-semibold pr-3 py-0.5 text-slate-600">Lampiran</td>
@@ -227,15 +268,15 @@ export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitat
             <div className="text-center space-y-16 min-w-[220px]">
               <div>
                 <p className="font-semibold text-slate-700">Dewan Syariah Nasional - MUI</p>
-                <p className="font-bold text-slate-900">{invitation.signatoryRole || 'Badan Pengurus Harian (BPH)'}</p>
+                <p className="font-bold text-slate-900">{invitation.signatoryRole || 'Ketua DSN MUI'}</p>
               </div>
 
               {/* Tanda Tangan */}
               <div className="space-y-0.5 border-t border-slate-900 pt-1">
                 <p className="font-bold text-slate-900 text-sm underline">
-                  {invitation.signatoryName || 'Prof. Dr. KH. Hasanuddin, M.Ag'}
+                  {invitation.signatoryName || 'K.H. M. Cholil Nafis, Lc., Ph.D.'}
                 </p>
-                <p className="text-[11px] text-slate-600">Ketua Bidang Pengawasan</p>
+                <p className="text-[11px] text-slate-600">{invitation.signatoryRole || 'Ketua DSN MUI'}</p>
               </div>
             </div>
           </div>

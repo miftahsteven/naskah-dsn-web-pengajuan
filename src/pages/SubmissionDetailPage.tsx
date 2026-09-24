@@ -273,6 +273,63 @@ export const SubmissionDetailPage: React.FC = () => {
   };
   const activeDpsStageIdx = getDpsStageIndex(currentDpsStage);
 
+  const getCurrentProcessInfo = () => {
+    if (submission.status === 'PERLU_PERBAIKAN' || isActionNeeded) {
+      return {
+        title: 'Perlu Tindakan Pemohon: Perbaikan / Kelengkapan Berkas',
+        description:
+          'Verifikator DSN-MUI meminta perbaikan atau kelengkapan berkas persyaratan. Silakan periksa instruksi perbaikan dan unggah dokumen revisi agar proses evaluasi dapat dilanjutkan.',
+      };
+    }
+    if (submission.status === 'DISETUJUI' || submission.status === 'SELESAI' || currentDpsStage === 'LULUS') {
+      return {
+        title: 'Permohonan Telah Disetujui & Selesai',
+        description:
+          'Seluruh proses verifikasi, wawancara, dan telaah musyawarah DSN-MUI telah selesai dengan hasil disetujui. Surat rekomendasi / sertifikat resmi telah diterbitkan.',
+      };
+    }
+    if (submission.status === 'DITOLAK' || currentDpsStage === 'TIDAK_LULUS') {
+      return {
+        title: 'Permohonan Ditolak',
+        description:
+          'Berdasarkan hasil verifikasi dan sidang pleno DSN-MUI, permohonan tidak dapat disetujui.',
+      };
+    }
+    if (submission.presentationInvitation) {
+      return {
+        title: 'Tahap Presentasi / Pemaparan Profil Instansi',
+        description:
+          'Jadwal undangan presentasi resmi telah ditetapkan oleh DSN-MUI. Instansi pemohon dijadwalkan hadir untuk memaparkan profil dan kesiapan operasional syariah sesuai jadwal tertera.',
+      };
+    }
+    if (currentDpsStage === 'WAWANCARA' || Boolean(submission.interviewInvitation)) {
+      return {
+        title: 'Tahap Uji Wawancara & Asesmen Calon DPS',
+        description:
+          'Jadwal wawancara uji kompetensi dan kelayakan calon DPS telah diterbitkan. Silakan periksa rincian surat undangan wawancara resmi di bawah ini.',
+      };
+    }
+    if (currentDpsStage === 'PROSES_INTERNAL') {
+      return {
+        title: 'Tahap Pembahasan & Sidang Pleno Internal DSN-MUI',
+        description:
+          'Seluruh berkas dan hasil wawancara sedang dibahas dalam musyawarah Sidang Pleno Badan Pengurus Harian (BPH) DSN-MUI.',
+      };
+    }
+    if (currentDpsStage === 'VALIDASI_DOKUMEN') {
+      return {
+        title: 'Tahap Validasi & Verifikasi Kelengkapan Dokumen',
+        description:
+          'Tim sekretariat DSN-MUI sedang melakukan validasi keabsahan dokumen persyaratan administratif dan kelayakan berkas.',
+      };
+    }
+    return {
+      title: 'Tahap Penerimaan & Registrasi Berkas',
+      description:
+        'Permohonan telah tercatat di sistem Surat Masuk DSN-MUI dan menunggu antrean disposisi verifikator.',
+    };
+  };
+
   const findDoc = (pattern: string) => {
     return allSubmissionDocs.find((d) => d.requirementName.toLowerCase().includes(pattern.toLowerCase()));
   };
@@ -571,6 +628,35 @@ export const SubmissionDetailPage: React.FC = () => {
             {rsStages.map((stage, idx) => {
               const isPast = idx < activeDpsStageIdx;
               const isCurrent = idx === activeDpsStageIdx;
+              const isFuture = idx > activeDpsStageIdx;
+
+              if (isFuture) {
+                return (
+                  <div
+                    key={stage.key}
+                    className="p-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/10 dark:bg-muted/5 opacity-60 flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border border-dashed border-muted-foreground/30 text-muted-foreground/50">
+                        {stage.step}
+                      </div>
+                      <span className="text-[10px] font-mono uppercase font-bold text-muted-foreground/50">
+                        Langkah {stage.step}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-muted-foreground/70 italic leading-tight">
+                        (Tahap Berikutnya)
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground/50 leading-snug mt-1 italic">
+                        Dikosongkan — alur dinamis DSN-MUI
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={stage.key}
@@ -611,6 +697,26 @@ export const SubmissionDetailPage: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Dynamic Current Process Info Box */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                  Informasi Proses Berjalan Saat Ini
+                </span>
+                <p className="font-extrabold text-sm text-foreground">
+                  {getCurrentProcessInfo().title}
+                </p>
+                <p className="text-muted-foreground text-xs leading-relaxed max-w-3xl">
+                  {getCurrentProcessInfo().description}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -649,6 +755,33 @@ export const SubmissionDetailPage: React.FC = () => {
               const isFuture = idx > activeDpsStageIdx;
               const isFailedEnd = isCurrent && currentDpsStage === 'TIDAK_LULUS';
               const isSuccessEnd = isCurrent && currentDpsStage === 'LULUS';
+
+              if (isFuture) {
+                return (
+                  <div
+                    key={stage.key}
+                    className="p-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/10 dark:bg-muted/5 opacity-60 flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border border-dashed border-muted-foreground/30 text-muted-foreground/50">
+                        {stage.step}
+                      </div>
+                      <span className="text-[10px] font-mono uppercase font-bold text-muted-foreground/50">
+                        Langkah {stage.step}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-muted-foreground/70 italic leading-tight">
+                        (Tahap Berikutnya)
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground/50 leading-snug mt-1 italic">
+                        Dikosongkan — alur dinamis DSN-MUI
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
@@ -696,6 +829,123 @@ export const SubmissionDetailPage: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Dynamic Current Process Info Box */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                  Informasi Proses Berjalan Saat Ini
+                </span>
+                <p className="font-extrabold text-sm text-foreground">
+                  {getCurrentProcessInfo().title}
+                </p>
+                <p className="text-muted-foreground text-xs leading-relaxed max-w-3xl">
+                  {getCurrentProcessInfo().description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── KARTU UNDANGAN PRESENTASI RESMI (JIKA DIJADWALKAN DSN) ── */}
+      {Boolean(submission.presentationInvitation) && (
+        <div className="bg-white dark:bg-[#172019] p-6 sm:p-8 rounded-3xl border border-emerald-300 dark:border-emerald-800 shadow-subtle space-y-5 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                  <span>Undangan Resmi Paparan Presentasi Instansi</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  DSN-MUI mengundang instansi pemohon untuk memaparkan profil dan kesiapan operasional syariah.
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 self-start sm:self-auto">
+              Jadwal Ditetapkan
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+              <span className="text-muted-foreground text-[10px] uppercase font-bold block">Tanggal & Waktu</span>
+              <span className="font-extrabold text-foreground text-sm block">
+                {submission.presentationInvitation.presentationDate
+                  ? new Date(submission.presentationInvitation.presentationDate).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                  : '—'}
+              </span>
+              <span className="text-muted-foreground font-semibold">
+                {submission.presentationInvitation.presentationTime || '09:30 WIB'}
+              </span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+              <span className="text-muted-foreground text-[10px] uppercase font-bold block">Metode Pelaksanaan</span>
+              <span className="font-extrabold text-foreground text-sm block">
+                {submission.presentationInvitation.format === 'OFFLINE'
+                  ? 'Tatap Muka (Offline)'
+                  : 'Pertemuan Virtual (Online)'}
+              </span>
+              <span className="text-muted-foreground truncate block">
+                {submission.presentationInvitation.format === 'OFFLINE'
+                  ? submission.presentationInvitation.venue || 'Kantor DSN-MUI Pusat'
+                  : submission.presentationInvitation.zoomUrl || 'Tautan Virtual Daring'}
+              </span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+              <span className="text-muted-foreground text-[10px] uppercase font-bold block">Narahubung (PIC)</span>
+              <span className="font-extrabold text-foreground text-sm block">
+                {submission.presentationInvitation.picName || 'Sekretariat DSN-MUI'}
+              </span>
+              <span className="text-muted-foreground text-[11px] block">
+                Konfirmasi kehadiran melalui kontak resmi DSN-MUI
+              </span>
+            </div>
+          </div>
+
+          {submission.presentationInvitation.format === 'ONLINE' && submission.presentationInvitation.zoomUrl && (
+            <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <span className="font-extrabold text-emerald-900 dark:text-emerald-200 block">Tautan Ruang Virtual:</span>
+                <span className="text-muted-foreground font-mono text-[11px]">{submission.presentationInvitation.zoomUrl}</span>
+                {submission.presentationInvitation.zoomMeetingId && (
+                  <span className="text-muted-foreground text-[11px] block">
+                    Meeting ID: {submission.presentationInvitation.zoomMeetingId} • Passcode: {submission.presentationInvitation.zoomPasscode || '—'}
+                  </span>
+                )}
+              </div>
+              <a
+                href={submission.presentationInvitation.zoomUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Buka Ruang Virtual</span>
+              </a>
+            </div>
+          )}
+
+          {submission.presentationInvitation.agendaNotes && (
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-border text-xs text-slate-700 dark:text-slate-300">
+              <span className="font-bold text-muted-foreground block text-[10px] uppercase mb-1">Materi / Agenda Pemaparan:</span>
+              <p className="leading-relaxed">&ldquo;{submission.presentationInvitation.agendaNotes}&rdquo;</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -746,7 +996,7 @@ export const SubmissionDetailPage: React.FC = () => {
           interviewDayDate: 'Kamis, 17 September 2026',
           interviewTime: '09:30 - 12:00',
           format: 'OFFLINE' as const,
-          venue: 'Ruang Rapat Pleno DSN-MUI Lt. 3, Gedung MUI Pusat, Jl. Proklamasi No. 51, Menteng, Jakarta Pusat',
+          venue: 'Kantor DSN MUI Jl. Dempo No. 19 Pegangsaan, Menteng, Jakarta Pusat 10320',
           subject: isRsSubmission
             ? `Undangan Wawancara & Asesmen Sertifikasi Syariah Rumah Sakit Terkait Surat No. ${submission.companyLetterNumber || submission.submissionNumber}`
             : `Undangan Wawancara Uji Kepatutan dan Kelayakan Calon Anggota DPS Terkait Surat No. ${submission.companyLetterNumber || submission.submissionNumber}`,
@@ -761,8 +1011,8 @@ export const SubmissionDetailPage: React.FC = () => {
             : 'Membawa berkas fisik asli, portofolio riwayat hidup, serta bahan pemaparan kesiapan kepengawasan syariah.',
           contactPerson: 'Sekretariat DSN-MUI (021-3904141 / wa.me/6281234567890)',
           notes: 'Peserta dimohon hadir 15 menit sebelum waktu wawancara dimulai.',
-          signatoryName: 'Prof. Dr. KH. Hasanuddin, M.Ag',
-          signatoryRole: 'Ketua Bidang Pengawasan Syariah DSN-MUI',
+          signatoryName: 'K.H. M. Cholil Nafis, Lc., Ph.D.',
+          signatoryRole: 'Ketua DSN MUI',
           status: 'SCHEDULED',
         });
 
@@ -858,6 +1108,55 @@ export const SubmissionDetailPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
+
+              {/* ── LAMPIRAN SURAT KELUAR RESMI DSN-MUI ── */}
+              {(invitationData.outgoingLetterNumber || invitationData.outgoingLetterFileUrl) && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in-50 duration-200">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-200">
+                          Surat Keluar DSN-MUI Terlampir
+                        </span>
+                        <span className="font-mono text-xs font-black text-blue-900 dark:text-blue-200 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-blue-300 dark:border-blue-700">
+                          {invitationData.outgoingLetterNumber || invitationData.invitationNumber}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-blue-950 dark:text-blue-100 mt-1">
+                        {invitationData.outgoingLetterTitle || 'Surat Undangan Resmi Pelaksanaan Wawancara DSN-MUI'}
+                      </p>
+                      <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
+                        Surat resmi telah diterbitkan melalui sistem persuratan DSN-MUI dan dilampirkan langsung pada agenda wawancara ini.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                    {invitationData.outgoingLetterFileUrl ? (
+                      <a
+                        href={getFileUrl(invitationData.outgoingLetterFileUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow transition-all"
+                      >
+                        <Download className="w-4 h-4" /> Unduh Dokumen Asli (PDF)
+                      </a>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setShowInvitationModal(true)}
+                        leftIcon={<FileText className="w-4 h-4" />}
+                      >
+                        Buka Lembar Undangan
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Assessment Evaluation Feedback Box (if already assessed) */}
               {currentAssessment && (
@@ -1887,15 +2186,15 @@ export const SubmissionDetailPage: React.FC = () => {
               interviewDayDate: 'Kamis, 17 September 2026',
               interviewTime: '09:30 - 12:00',
               format: 'OFFLINE' as const,
-              venue: 'Ruang Rapat Pleno DSN-MUI Lt. 3, Gedung MUI Pusat, Jl. Proklamasi No. 51, Menteng, Jakarta Pusat',
+              venue: 'Kantor DSN MUI Jl. Dempo No. 19 Pegangsaan, Menteng, Jakarta Pusat 10320',
               subject: `Undangan Wawancara Uji Kepatutan dan Kelayakan Calon Anggota DPS Terkait Surat No. ${submission.companyLetterNumber || submission.submissionNumber}`,
               candidates: candidatesList.length > 0 ? candidatesList.map((c: any) => c.name) : ['Calon Anggota Dewan Pengawas Syariah'],
               dresscode: 'Pakaian Sipil Lengkap / Batik Lengan Panjang / Jas Rapi',
               requirements: 'Membawa berkas fisik asli, portofolio riwayat hidup, serta bahan pemaparan kesiapan kepengawasan syariah.',
               contactPerson: 'Sekretariat DSN-MUI (021-3904141 / wa.me/6281234567890)',
               notes: 'Calon DPS dimohon hadir 15 menit sebelum waktu wawancara dimulai.',
-              signatoryName: 'Prof. Dr. KH. Hasanuddin, M.Ag',
-              signatoryRole: 'Ketua Bidang Pengawasan Syariah DSN-MUI',
+              signatoryName: 'K.H. M. Cholil Nafis, Lc., Ph.D.',
+              signatoryRole: 'Ketua DSN MUI',
             }
           }
         />

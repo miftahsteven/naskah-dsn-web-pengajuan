@@ -151,6 +151,11 @@ export interface InterviewInvitation {
   notes?: string | null;
   signatoryName?: string;
   signatoryRole?: string;
+  outgoingLetterId?: string | null;
+  outgoingLetterNumber?: string | null;
+  outgoingLetterTitle?: string | null;
+  outgoingLetterFileUrl?: string | null;
+  outgoingLetterFileName?: string | null;
   status?: 'SCHEDULED' | 'PASSED' | 'FAILED' | string;
   assessment?: {
     assessedByName?: string;
@@ -208,6 +213,7 @@ export interface PublicSubmission {
   candidates?: PublicSubmissionCandidate[];
   dpsStage?: string;
   validationType?: string;
+  presentationInvitation?: any;
   interviewInvitation?: InterviewInvitation;
   interviewHistory?: any[];
   documents?: PublicSubmissionDocument[];
