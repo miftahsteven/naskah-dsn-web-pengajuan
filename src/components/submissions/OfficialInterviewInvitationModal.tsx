@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import type { InterviewInvitation, PublicSubmission } from '../../types';
-import { getFileUrl } from '../../lib/api';
+import api, { API_BASE_URL, getFileUrl } from '../../lib/api';
 import {
   Printer,
   Download,
@@ -13,6 +13,11 @@ import {
   ShieldCheck,
   FileText,
   ExternalLink,
+  Loader2,
+  AlertCircle,
+  Video,
+  Building2,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface OfficialInterviewInvitationModalProps {
@@ -22,270 +27,332 @@ interface OfficialInterviewInvitationModalProps {
   invitation: InterviewInvitation;
 }
 
+interface LetterData {
+  type: 'html' | 'pdf' | 'none';
+  htmlContent?: string;
+  fileUrl?: string;
+  documentNumber?: string;
+  title?: string;
+  fileName?: string;
+  downloadUrl?: string;
+  invitation?: any;
+}
+
 export const OfficialInterviewInvitationModal: React.FC<OfficialInterviewInvitationModalProps> = ({
   isOpen,
   onClose,
   submission,
   invitation,
 }) => {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [letterData, setLetterData] = useState<LetterData | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const fetchLetterContent = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.get(`/submissions/${submission.id}/invitation-letter/content`);
+      if (res.data?.status === 'success' && res.data?.data) {
+        setLetterData(res.data.data);
+      } else {
+        setLetterData({
+          type: 'none',
+          documentNumber: invitation.outgoingLetterNumber || invitation.invitationNumber,
+          title: invitation.outgoingLetterTitle || invitation.subject,
+        });
+      }
+    } catch (err: any) {
+      console.warn('[OfficialInterviewInvitationModal] Error fetching letter content:', err);
+      // Fallback gracefully so applicant can still see schedule
+      setLetterData({
+        type: 'none',
+        documentNumber: invitation.outgoingLetterNumber || invitation.invitationNumber,
+        title: invitation.outgoingLetterTitle || invitation.subject,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLetterContent();
+    } else {
+      setLetterData(null);
+      setError(null);
+    }
+  }, [isOpen, submission.id]);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('amanah_public_token') || '' : '';
+  const directDownloadUrl = `${API_BASE_URL}/submissions/${submission.id}/invitation-letter/download?token=${encodeURIComponent(token)}`;
+
   const handlePrint = () => {
+    if (letterData?.type === 'html' && iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.focus();
+        iframeRef.current.contentWindow.print();
+        return;
+      } catch (e) {
+        console.warn('Iframe print error, falling back to window.print():', e);
+      }
+    }
     window.print();
   };
 
-  const effectiveLetterNumber = invitation.outgoingLetterNumber || invitation.invitationNumber;
+  const effectiveNumber =
+    letterData?.documentNumber ||
+    invitation.outgoingLetterNumber ||
+    invitation.invitationNumber ||
+    'U-DSN-MUI';
+
+  const effectiveTitle =
+    letterData?.title ||
+    invitation.outgoingLetterTitle ||
+    invitation.subject ||
+    'Surat Undangan Resmi Pelaksanaan Wawancara DSN-MUI';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title=""
-      maxWidth="2xl"
+      maxWidth="4xl"
+      className="p-0 overflow-hidden"
     >
-      <div className="space-y-6 -mt-4">
-        {/* Action Header bar inside modal */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 no-print">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Dokumen Resmi DSN-MUI
-            </span>
-            <span className="text-xs font-mono text-muted-foreground font-semibold">
-              {effectiveLetterNumber}
-            </span>
+      <div className="flex flex-col h-full max-h-[92vh] -m-6">
+        {/* ── TOP ACTION & TITLE BAR ── */}
+        <div className="p-4 sm:p-5 border-b border-border bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Surat Keluar Resmi DSN-MUI
+              </span>
+              <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-2xs">
+                {effectiveNumber}
+              </span>
+            </div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-1 truncate">
+              {effectiveTitle}
+            </h2>
           </div>
-          <div className="flex items-center gap-2">
-            {invitation.outgoingLetterFileUrl && (
-              <a
-                href={getFileUrl(invitation.outgoingLetterFileUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all"
-              >
-                <Download className="w-3.5 h-3.5" /> Unduh Berkas Asli (PDF)
-              </a>
-            )}
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href={directDownloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 shadow-xs transition-all"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" /> Buka Tab Baru
+            </a>
             <Button
               variant="outline"
               size="sm"
               onClick={handlePrint}
-              leftIcon={<Printer className="w-4 h-4" />}
+              leftIcon={<Printer className="w-4 h-4 text-emerald-600" />}
+              disabled={loading}
+              className="font-bold"
             >
               Cetak Dokumen
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handlePrint}
-              leftIcon={<Download className="w-4 h-4" />}
+            <a
+              href={directDownloadUrl}
+              download={letterData?.fileName || `${effectiveNumber}.pdf`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#006633] hover:bg-[#00552b] text-white shadow-xs hover:shadow transition-all"
             >
-              Unduh PDF
-            </Button>
+              <Download className="w-4 h-4" /> Unduh Berkas
+            </a>
           </div>
         </div>
 
-        {/* Surat Keluar Banner Notice */}
-        {invitation.outgoingLetterNumber && (
-          <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 flex items-center justify-between gap-3 text-xs no-print">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-              <div>
-                <span className="font-bold">Surat Keluar DSN-MUI Terlampir: </span>
-                <span className="font-mono font-bold">{invitation.outgoingLetterNumber}</span>
-                {invitation.outgoingLetterTitle && (
-                  <span className="text-blue-700 dark:text-blue-300 ml-1">({invitation.outgoingLetterTitle})</span>
+        {/* ── SCHEDULE SUMMARY STRIP (QUICK ACCESS FOR CANDIDATES) ── */}
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/60 px-5 py-3 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-1.5 font-medium">
+                <Calendar className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {invitation.interviewDayDate}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium">
+                <Clock className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span>{invitation.interviewTime} WIB</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium">
+                <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span className="truncate max-w-[280px]">{invitation.venue}</span>
+              </div>
+            </div>
+
+            {invitation.zoomUrl && (
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={invitation.zoomUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all"
+                >
+                  <Video className="w-3.5 h-3.5" /> Akses Zoom Meeting
+                </a>
+                {invitation.zoomPasscode && (
+                  <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
+                    Passcode: <strong className="text-slate-900 dark:text-white">{invitation.zoomPasscode}</strong>
+                  </span>
                 )}
               </div>
-            </div>
-            {invitation.outgoingLetterFileUrl && (
-              <a
-                href={getFileUrl(invitation.outgoingLetterFileUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-blue-600 hover:underline flex items-center gap-1 text-[11px] shrink-0"
-              >
-                Buka File <ExternalLink className="w-3 h-3" />
-              </a>
             )}
           </div>
-        )}
+        </div>
 
-        {/* ── KOP SURAT & LEMBAR DOKUMEN RESMI ── */}
-        <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-2xl border border-slate-300 shadow-sm print:shadow-none print:border-none print:p-0 font-serif leading-relaxed text-sm space-y-6">
-          {/* Header Kop DSN-MUI */}
-          <div className="border-b-4 border-double border-slate-900 pb-4 text-center space-y-1">
-            <div className="flex items-center justify-center gap-4 mb-2">
-              <div className="w-14 h-14 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs tracking-tighter shadow-sm font-sans">
-                MUI
+        {/* ── MAIN DOCUMENT READER CANVAS ── */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100 dark:bg-slate-950 flex flex-col items-center">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center my-auto py-24 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 shadow-md flex items-center justify-center border border-slate-200 dark:border-slate-800">
+                <Loader2 className="w-6 h-6 text-[#006633] animate-spin" />
               </div>
-              <div className="space-y-0.5 text-center">
-                <h2 className="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900 font-sans">
-                  DEWAN SYARIAH NASIONAL - MAJELIS ULAMA INDONESIA
-                </h2>
-                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-800 font-sans">
-                  NATIONAL SHARIA BOARD - INDONESIAN COUNCIL OF ULAMA
-                </h3>
-                <p className="text-[11px] text-slate-600 font-sans">
-                  Kantor DSN MUI Jl. Dempo No. 19 Pegangsaan, Menteng, Jakarta Pusat 10320 • Telp: (021) 3904141 • Email: sekretariat@dsnmui.or.id
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  Memuat Berkas Surat Keluar Resmi DSN-MUI...
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Menyiapkan naskah surat, lampiran, dan tanda tangan digital terverifikasi.
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Nomor & Tanggal Surat */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 text-xs font-sans">
-            <table className="text-left">
-              <tbody>
-                <tr>
-                  <td className="font-semibold pr-3 py-0.5 text-slate-600">Nomor</td>
-                  <td className="pr-2">:</td>
-                  <td className="font-bold font-mono text-slate-900">{effectiveLetterNumber}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold pr-3 py-0.5 text-slate-600">Lampiran</td>
-                  <td className="pr-2">:</td>
-                  <td>1 (Satu) Berkas</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold pr-3 py-0.5 text-slate-600">Perihal</td>
-                  <td className="pr-2">:</td>
-                  <td className="font-bold text-slate-900">
-                    Undangan Wawancara Uji Kepatutan & Kelayakan Calon Anggota DPS
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div className="text-left sm:text-right">
-              <p className="font-semibold text-slate-700">Jakarta, {invitation.invitationDate}</p>
+          ) : error ? (
+            <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-900 dark:text-rose-200 max-w-lg text-center my-auto space-y-3">
+              <AlertCircle className="w-8 h-8 text-rose-600 mx-auto" />
+              <p className="font-bold text-sm">{error}</p>
+              <Button variant="outline" size="sm" onClick={fetchLetterContent}>
+                Coba Muat Ulang
+              </Button>
             </div>
-          </div>
-
-          {/* Kepada Yth */}
-          <div className="space-y-1 font-sans text-xs">
-            <p className="text-slate-700">Kepada Yang Terhormat,</p>
-            <p className="font-bold text-slate-900 text-sm">{submission.company?.name || 'Pimpinan Perusahaan / LKS'}</p>
-            <p className="text-slate-600">d/a {submission.company?.address || 'Di Tempat'}</p>
-          </div>
-
-          {/* Isi Surat */}
-          <div className="space-y-3 text-justify font-serif text-[13px] leading-relaxed text-slate-800">
-            <p className="italic font-bold">Assalamu’alaikum Warahmatullahi Wabarakatuh,</p>
-            <p>
-              Sehubungan dengan surat permohonan rekomendasi Dewan Pengawas Syariah (DPS) dari{' '}
-              <strong className="font-sans font-bold">{submission.company?.name}</strong> Nomor:{' '}
-              <strong className="font-sans font-bold font-mono">
-                {submission.companyLetterNumber || submission.submissionNumber}
-              </strong>
-              {submission.companyLetterDate ? ` tertanggal ${invitation.invitationDate}` : ''}, dan
-              setelah dilakukan proses pemeriksaan dan validasi administrasi kelengkapan dokumen persyaratan
-              calon DPS oleh Sekretariat DSN-MUI, bersama ini kami mengundang Saudara serta Calon Anggota
-              Dewan Pengawas Syariah untuk menghadiri{' '}
-              <strong>Wawancara Uji Kepatutan dan Kelayakan (Fit and Proper Test)</strong> yang insya Allah
-              akan diselenggarakan pada:
-            </p>
-
-            {/* Tabel Agenda Wawancara */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 font-sans text-xs space-y-2.5 my-2">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="text-slate-500 font-semibold">Hari / Tanggal</div>
-                <div className="sm:col-span-2 font-bold text-slate-900 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-emerald-700" />
-                  {invitation.interviewDayDate}
+          ) : letterData?.type === 'html' && letterData.htmlContent ? (
+            /* ── ACTUAL HTML SURAT KELUAR ── */
+            <div className="w-full max-w-[850px] bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden flex flex-col my-auto min-h-[750px]">
+              <iframe
+                ref={iframeRef}
+                srcDoc={letterData.htmlContent}
+                title={`Surat Keluar ${effectiveNumber}`}
+                className="w-full flex-1 min-h-[750px] border-0"
+                style={{ minHeight: '800px', display: 'block' }}
+              />
+            </div>
+          ) : letterData?.type === 'pdf' && letterData.fileUrl ? (
+            /* ── ACTUAL PDF SURAT KELUAR ── */
+            <div className="w-full max-w-[850px] bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-300 dark:border-slate-800 overflow-hidden flex flex-col my-auto min-h-[750px]">
+              <iframe
+                src={getFileUrl(letterData.fileUrl)}
+                title={`Surat Keluar PDF ${effectiveNumber}`}
+                className="w-full flex-1 min-h-[750px] border-0"
+              />
+            </div>
+          ) : (
+            /* ── FALLBACK AGENDA CARD IF PHYSICAL LETTER NOT YET GENERATED ── */
+            <div className="w-full max-w-[700px] bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 space-y-6 my-auto">
+              <div className="flex items-center gap-3 border-b border-border pb-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 flex items-center justify-center font-bold">
+                  <FileText className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Agenda Wawancara DSN-MUI
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Nomor Agenda: {effectiveNumber}
+                  </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="text-slate-500 font-semibold">Waktu / Pukul</div>
-                <div className="sm:col-span-2 font-bold text-slate-900 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-emerald-700" />
-                  {invitation.interviewTime} WIB
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="text-slate-500 font-semibold">Tempat / Media</div>
-                <div className="sm:col-span-2 font-bold text-slate-900 flex items-start gap-1.5">
-                  <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                  <span>{invitation.venue}</span>
-                </div>
-              </div>
-              {invitation.zoomUrl && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-200">
-                  <div className="text-slate-500 font-semibold">Akses Virtual Zoom</div>
-                  <div className="sm:col-span-2 space-y-1 text-slate-900">
-                    <p className="font-mono text-emerald-800 font-bold break-all">{invitation.zoomUrl}</p>
-                    {invitation.zoomMeetingId && (
-                      <p className="text-[11px] text-slate-600">
-                        Meeting ID: <span className="font-mono font-bold">{invitation.zoomMeetingId}</span> • Passcode:{' '}
-                        <span className="font-mono font-bold">{invitation.zoomPasscode || '-'}</span>
-                      </p>
-                    )}
+
+              <div className="space-y-4 text-xs font-sans">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-slate-500 font-semibold">Perihal:</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-right">
+                      {effectiveTitle}
+                    </span>
                   </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-slate-500 font-semibold">Hari / Tanggal:</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-right">
+                      {invitation.interviewDayDate}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-slate-500 font-semibold">Waktu Pelaksanaan:</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-right">
+                      {invitation.interviewTime} WIB
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-slate-500 font-semibold">Tempat / Media:</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-right">
+                      {invitation.venue}
+                    </span>
+                  </div>
+                  {invitation.zoomUrl && (
+                    <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <span className="text-slate-500 font-semibold">Tautan Zoom:</span>
+                      <a
+                        href={invitation.zoomUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 font-bold hover:underline break-all text-right"
+                      >
+                        {invitation.zoomUrl}
+                      </a>
+                    </div>
+                  )}
+                  {invitation.candidates && invitation.candidates.length > 0 && (
+                    <div className="flex items-start justify-between gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <span className="text-slate-500 font-semibold">Peserta / Kandidat:</span>
+                      <span className="font-bold text-emerald-800 dark:text-emerald-300 text-right">
+                        {invitation.candidates.join(', ')}
+                      </span>
+                    </div>
+                  )}
+                  {invitation.dresscode && (
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-slate-500 font-semibold">Ketentuan Busana:</span>
+                      <span className="text-slate-800 dark:text-slate-200 text-right">
+                        {invitation.dresscode}
+                      </span>
+                    </div>
+                  )}
+                  {invitation.requirements && (
+                    <div className="flex items-start justify-between gap-4">
+                      <span className="text-slate-500 font-semibold">Persyaratan:</span>
+                      <span className="text-slate-800 dark:text-slate-200 text-right">
+                        {invitation.requirements}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-200">
-                <div className="text-slate-500 font-semibold">Kandidat Diundang</div>
-                <div className="sm:col-span-2 font-bold text-emerald-900 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-emerald-700" />
-                  {invitation.candidates.join(', ')}
+
+                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-200">
+                  <p className="font-semibold text-xs leading-relaxed">
+                    Surat undangan resmi cetak sedang dalam proses pengesahan tanda tangan di sekretariat DSN-MUI. Silakan simpan jadwal wawancara di atas untuk persiapan Anda.
+                  </p>
                 </div>
               </div>
-              {invitation.dresscode && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="text-slate-500 font-semibold">Ketentuan Busana</div>
-                  <div className="sm:col-span-2 text-slate-800">{invitation.dresscode}</div>
-                </div>
-              )}
             </div>
+          )}
+        </div>
 
-            <p>
-              Mengingat pentingnya agenda ini untuk penetapan rekomendasi resmi Dewan Pengawas Syariah, kami
-              memohon kehadiran tepat waktu. Calon anggota DPS diharapkan mempersiapkan bahan paparan dan
-              membawa dokumen asli kelengkapan yang telah diajukan.
-            </p>
-            <p>
-              Demikian surat undangan ini kami sampaikan. Atas perhatian dan kerja sama yang baik, kami ucapkan
-              terima kasih.
-            </p>
-            <p className="italic font-bold">Wassalamu’alaikum Warahmatullahi Wabarakatuh.</p>
+        {/* ── MODAL FOOTER ── */}
+        <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-900 flex items-center justify-between gap-3 text-xs text-muted-foreground shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Amanah Public Portal • Sistem Persuratan Resmi DSN-MUI</span>
           </div>
-
-          {/* Tanda Tangan & Cap DSN-MUI */}
-          <div className="pt-6 flex justify-between items-end font-sans text-xs">
-            {/* QR Code Verifikasi */}
-            <div className="space-y-1.5 text-center">
-              <div className="p-2 border border-slate-300 rounded-lg inline-block bg-white shadow-xs">
-                <div className="w-20 h-20 bg-slate-900 text-white flex flex-col items-center justify-center text-[9px] font-mono p-1 text-center font-bold">
-                  <span>DSN-MUI</span>
-                  <span className="text-[8px] text-emerald-400">VERIFIED</span>
-                  <span className="text-[7px] text-slate-300 font-mono mt-1">{invitation.invitationNumber.slice(-8)}</span>
-                </div>
-              </div>
-              <p className="text-[9px] text-slate-500 max-w-[120px] mx-auto leading-tight">
-                Scan untuk verifikasi keabsahan surat undangan
-              </p>
-            </div>
-
-            {/* Pejabat Penandatangan */}
-            <div className="text-center space-y-16 min-w-[220px]">
-              <div>
-                <p className="font-semibold text-slate-700">Dewan Syariah Nasional - MUI</p>
-                <p className="font-bold text-slate-900">{invitation.signatoryRole || 'Ketua DSN MUI'}</p>
-              </div>
-
-              {/* Tanda Tangan */}
-              <div className="space-y-0.5 border-t border-slate-900 pt-1">
-                <p className="font-bold text-slate-900 text-sm underline">
-                  {invitation.signatoryName || 'K.H. M. Cholil Nafis, Lc., Ph.D.'}
-                </p>
-                <p className="text-[11px] text-slate-600">{invitation.signatoryRole || 'Ketua DSN MUI'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Catatan Kontak */}
-          <div className="border-t border-slate-200 pt-3 text-[10px] text-slate-500 font-sans flex flex-col sm:flex-row justify-between gap-1">
-            <span>Konfirmasi Kehadiran: {invitation.contactPerson || 'Sekretariat DSN-MUI (021-3904141)'}</span>
-            <span>Amanah e-Office • Dokumen Resmi Terverifikasi</span>
-          </div>
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Tutup
+          </Button>
         </div>
       </div>
     </Modal>

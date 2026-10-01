@@ -38,6 +38,28 @@ const DocumentVerificationRedirect: React.FC = () => {
   );
 };
 
+const OfficeSuratKeluarRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+
+  React.useEffect(() => {
+    const targetPath = id ? `/office/surat-keluar/${encodeURIComponent(id)}` : '/office/surat-keluar';
+    if (typeof window !== 'undefined' && window.location.port === '5174') {
+      window.location.replace(`http://${window.location.hostname}:3000${targetPath}`);
+    } else {
+      window.location.replace(targetPath);
+    }
+  }, [id]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">
+      <div className="w-12 h-12 border-4 border-[#006633] border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest animate-pulse">
+        Membuka Dokumen Surat Keluar di Portal Kantor...
+      </p>
+    </div>
+  );
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -70,6 +92,8 @@ export const App: React.FC = () => {
             <Route path="/verify/public/:certNumber" element={<PublicVerifyCertificatePage />} />
             <Route path="/verify/document/:id" element={<DocumentVerificationRedirect />} />
             <Route path="/verify/document" element={<DocumentVerificationRedirect />} />
+            <Route path="/surat-keluar/:id" element={<OfficeSuratKeluarRedirect />} />
+            <Route path="/surat-keluar" element={<OfficeSuratKeluarRedirect />} />
 
             {/* Authenticated Portal Routes */}
             <Route

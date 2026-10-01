@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { DocumentViewerModal } from '../components/ui/DocumentViewerModal';
-import api, { formatDate, formatDateTime, formatFileSize, getStatusMeta, getFileUrl } from '../lib/api';
+import api, { formatDate, formatDateTime, formatFileSize, getStatusMeta, getFileUrl, API_BASE_URL } from '../lib/api';
 import type { PublicSubmission } from '../types';
 import {
   FileText,
@@ -1135,25 +1135,22 @@ export const SubmissionDetailPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-                    {invitationData.outgoingLetterFileUrl ? (
-                      <a
-                        href={getFileUrl(invitationData.outgoingLetterFileUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow transition-all"
-                      >
-                        <Download className="w-4 h-4" /> Unduh Dokumen Asli (PDF)
-                      </a>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => setShowInvitationModal(true)}
-                        leftIcon={<FileText className="w-4 h-4" />}
-                      >
-                        Buka Lembar Undangan
-                      </Button>
-                    )}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowInvitationModal(true)}
+                      leftIcon={<FileText className="w-4 h-4" />}
+                    >
+                      Buka Lembar Undangan
+                    </Button>
+                    <a
+                      href={`${API_BASE_URL}/submissions/${submission.id}/invitation-letter/download?token=${encodeURIComponent(typeof window !== 'undefined' ? localStorage.getItem('amanah_public_token') || '' : '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 shadow-xs transition-all"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Unduh Dokumen
+                    </a>
                   </div>
                 </div>
               )}
